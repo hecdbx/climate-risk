@@ -118,6 +118,19 @@ def load_climate_data():
 def create_sample_data():
     """Create sample climate data for demonstration"""
     
+    # Define explicit schema for DBR 16+ compatibility
+    from pyspark.sql.types import StructType, StructField, StringType, DoubleType, DateType
+    
+    schema = StructType([
+        StructField("latitude", DoubleType(), True),
+        StructField("longitude", DoubleType(), True),
+        StructField("date", StringType(), True),
+        StructField("h3_cell", StringType(), True),
+        StructField("precipitation_mm", DoubleType(), True),
+        StructField("temperature_celsius", DoubleType(), True),
+        StructField("soil_moisture_percent", DoubleType(), True)
+    ])
+    
     # Generate sample coordinates for a region (e.g., California)
     lat_range = np.arange(32.0, 42.0, 0.1)
     lon_range = np.arange(-124.0, -114.0, 0.1)
@@ -133,24 +146,24 @@ def create_sample_data():
                 
                 # Synthetic climate data with seasonal patterns
                 base_precip = 2.0 + np.sin(i * 2 * np.pi / 365) * 1.5
-                precipitation = max(0, np.random.normal(base_precip, 1.0))
+                precipitation = max(0.0, float(np.random.normal(base_precip, 1.0)))
                 
                 base_temp = 20 + np.sin(i * 2 * np.pi / 365) * 10
-                temperature = np.random.normal(base_temp, 3.0)
+                temperature = float(np.random.normal(base_temp, 3.0))
                 
-                soil_moisture = max(0, min(100, np.random.normal(40, 15)))
+                soil_moisture = max(0.0, min(100.0, float(np.random.normal(40, 15))))
                 
-                sample_data.append({
-                    'latitude': lat,
-                    'longitude': lon,
-                    'date': date.strftime('%Y-%m-%d'),
-                    'h3_cell': h3_cell,
-                    'precipitation_mm': precipitation,
-                    'temperature_celsius': temperature,
-                    'soil_moisture_percent': soil_moisture
-                })
+                sample_data.append((
+                    float(lat),
+                    float(lon),
+                    date.strftime('%Y-%m-%d'),
+                    str(h3_cell),
+                    precipitation,
+                    temperature,
+                    soil_moisture
+                ))
     
-    return spark.createDataFrame(sample_data)
+    return spark.createDataFrame(sample_data, schema)
 
 # Load or create sample data
 climate_df = create_sample_data()

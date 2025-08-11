@@ -81,6 +81,19 @@ config = FloodConfig()
 def create_elevation_data():
     """Create sample elevation and topographic data"""
     
+    # Define explicit schema for DBR 16+ compatibility
+    from pyspark.sql.types import StructType, StructField, StringType, DoubleType, BooleanType
+    
+    schema = StructType([
+        StructField("latitude", DoubleType(), True),
+        StructField("longitude", DoubleType(), True),
+        StructField("h3_cell", StringType(), True),
+        StructField("elevation_m", DoubleType(), True),
+        StructField("slope_degrees", DoubleType(), True),
+        StructField("in_floodplain", BooleanType(), True),
+        StructField("distance_to_water", DoubleType(), True)
+    ])
+    
     # Generate sample elevation data for a watershed region
     lat_range = np.arange(37.0, 38.0, 0.01)  # San Francisco Bay Area example
     lon_range = np.arange(-122.5, -121.5, 0.01)
@@ -96,25 +109,25 @@ def create_elevation_data():
             
             # Add random variation and some valleys/hills
             noise = np.random.normal(0, 20)
-            elevation = max(0, base_elevation + noise)
+            elevation = max(0.0, float(base_elevation + noise))
             
             # Calculate slope (simplified - in reality would use neighboring cells)
-            slope = min(45, abs(noise) * 0.5 + np.random.uniform(0, 5))
+            slope = min(45.0, float(abs(noise) * 0.5 + np.random.uniform(0, 5)))
             
             # Determine if in floodplain (low elevation near water bodies)
             in_floodplain = elevation < 50 and np.random.random() < 0.3
             
-            elevation_data.append({
-                'latitude': lat,
-                'longitude': lon,
-                'h3_cell': h3_cell,
-                'elevation_m': elevation,
-                'slope_degrees': slope,
-                'in_floodplain': in_floodplain,
-                'distance_to_water': np.random.uniform(100, 5000) if not in_floodplain else np.random.uniform(10, 500)
-            })
+            elevation_data.append((
+                float(lat),
+                float(lon),
+                str(h3_cell),
+                elevation,
+                slope,
+                bool(in_floodplain),
+                float(np.random.uniform(100, 5000) if not in_floodplain else np.random.uniform(10, 500))
+            ))
     
-    return spark.createDataFrame(elevation_data)
+    return spark.createDataFrame(elevation_data, schema)
 
 def calculate_topographic_factors(elevation_df):
     """Calculate topographic factors that influence flood risk"""
@@ -164,14 +177,27 @@ elevation_df.show(5)
 def create_precipitation_data():
     """Create sample precipitation data with various intensities"""
     
+    # Define explicit schema for DBR 16+ compatibility
+    from pyspark.sql.types import StructType, StructField, StringType, DoubleType
+    
+    schema = StructType([
+        StructField("h3_cell", StringType(), True),
+        StructField("latitude", DoubleType(), True),
+        StructField("longitude", DoubleType(), True),
+        StructField("date", StringType(), True),
+        StructField("daily_precipitation_mm", DoubleType(), True),
+        StructField("max_hourly_intensity_mm", DoubleType(), True),
+        StructField("precipitation_intensity", DoubleType(), True)
+    ])
+    
     # Get H3 cells from elevation data
     h3_cells = elevation_df.select("h3_cell", "latitude", "longitude").distinct().collect()
     
     precip_data = []
     for row in h3_cells:
         h3_cell = row['h3_cell']
-        lat = row['latitude']
-        lon = row['longitude']
+        lat = float(row['latitude'])
+        lon = float(row['longitude'])
         
         # Generate 365 days of precipitation data
         for i in range(365):
@@ -185,26 +211,28 @@ def create_precipitation_data():
             
             # Occasional storm events (5% chance of heavy rain)
             if np.random.random() < 0.05:
-                daily_precip = np.random.gamma(2, 15) * seasonal_factor
+                daily_precip = float(np.random.gamma(2, 15) * seasonal_factor)
                 max_hourly = daily_precip * 0.6  # Peak intensity
             else:
-                daily_precip = max(0, np.random.gamma(1, base_precip))
+                daily_precip = max(0.0, float(np.random.gamma(1, base_precip)))
                 max_hourly = daily_precip * 0.3
             
             # Calculate 24-hour precipitation intensity
             precip_intensity = max_hourly
             
-            precip_data.append({
-                'h3_cell': h3_cell,
-                'latitude': lat,
-                'longitude': lon,
-                'date': date.strftime('%Y-%m-%d'),
-                'daily_precipitation_mm': daily_precip,
-                'max_hourly_intensity_mm': max_hourly,
-                'precipitation_intensity': precip_intensity
-            })
+            precip_data.append((
+                str(h3_cell),
+                lat,
+                lon,
+                date.strftime('%Y-%m-%d'),
+                daily_precip,
+                float(max_hourly),
+                float(precip_intensity)
+            ))
     
-    return spark.createDataFrame(precip_data[:50000])  # Limit for demo
+    # Limit for demo and create DataFrame with schema
+    limited_data = precip_data[:50000]
+    return spark.createDataFrame(limited_data, schema)
 
 def classify_precipitation_events(precip_df):
     """Classify precipitation events by intensity and flood potential"""
@@ -247,6 +275,20 @@ precipitation_df.groupBy("intensity_class").count().orderBy("intensity_class").s
 def create_historical_flood_data():
     """Create sample historical flood event data"""
     
+    # Define explicit schema for DBR 16+ compatibility
+    from pyspark.sql.types import StructType, StructField, StringType, DoubleType
+    
+    schema = StructType([
+        StructField("h3_cell", StringType(), True),
+        StructField("latitude", DoubleType(), True),
+        StructField("longitude", DoubleType(), True),
+        StructField("event_date", StringType(), True),
+        StructField("severity", StringType(), True),
+        StructField("flood_depth_m", DoubleType(), True),
+        StructField("duration_hours", DoubleType(), True),
+        StructField("damage_estimate", DoubleType(), True)
+    ])
+    
     # Generate historical flood events
     flood_events = []
     h3_cells = elevation_df.select("h3_cell", "latitude", "longitude").collect()
@@ -264,23 +306,23 @@ def create_historical_flood_data():
         depth_mapping = {'minor': (0.1, 0.5), 'moderate': (0.5, 1.5), 
                         'major': (1.5, 3.0), 'severe': (3.0, 8.0)}
         min_depth, max_depth = depth_mapping[severity]
-        flood_depth = np.random.uniform(min_depth, max_depth)
+        flood_depth = float(np.random.uniform(min_depth, max_depth))
         
         # Duration (hours)
-        duration = np.random.gamma(2, 8)  # Gamma distribution for duration
+        duration = float(np.random.gamma(2, 8))  # Gamma distribution for duration
         
-        flood_events.append({
-            'h3_cell': location['h3_cell'],
-            'latitude': location['latitude'],
-            'longitude': location['longitude'],
-            'event_date': event_date.strftime('%Y-%m-%d'),
-            'severity': severity,
-            'flood_depth_m': flood_depth,
-            'duration_hours': duration,
-            'damage_estimate': flood_depth * 10000 * np.random.uniform(0.5, 2.0)  # Rough damage estimate
-        })
+        flood_events.append((
+            str(location['h3_cell']),
+            float(location['latitude']),
+            float(location['longitude']),
+            event_date.strftime('%Y-%m-%d'),
+            str(severity),
+            flood_depth,
+            duration,
+            float(flood_depth * 10000 * np.random.uniform(0.5, 2.0))  # Rough damage estimate
+        ))
     
-    return spark.createDataFrame(flood_events)
+    return spark.createDataFrame(flood_events, schema)
 
 def calculate_historical_flood_frequency(flood_df):
     """Calculate historical flood frequency by location"""
