@@ -5,6 +5,33 @@ data_sources:
   
   # Climate Data Sources
   climate:
+    accuweather:
+      name: "AccuWeather API"
+      url: "https://developer.accuweather.com/apis"
+      description: "Real-time and forecast weather data from AccuWeather"
+      variables:
+        - current_conditions
+        - hourly_forecast
+        - daily_forecast
+        - precipitation
+        - temperature
+        - humidity
+        - wind_speed
+        - pressure
+      resolution: "location-based"
+      update_frequency: "real-time"
+      format: "JSON"
+      authentication: "api_key"
+      endpoints:
+        current_conditions: "/currentconditions/v1/{locationKey}"
+        hourly_forecast: "/forecasts/v1/hourly/12hour/{locationKey}"
+        daily_forecast: "/forecasts/v1/daily/5day/{locationKey}"
+        historical: "/currentconditions/v1/{locationKey}/historical/24"
+      rate_limits:
+        free_tier: "50 calls/day"
+        plus_tier: "250 calls/day"
+        standard_tier: "25000 calls/day"
+    
     noaa_prism:
       name: "NOAA PRISM Climate Data"
       url: "https://prism.oregonstate.edu/"

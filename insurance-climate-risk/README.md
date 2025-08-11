@@ -51,27 +51,37 @@ This project leverages Databricks' latest geospatial capabilities to build sophi
 
 ## 🛠️ Technology Stack
 
-- **Platform**: Databricks Runtime 16.1+ LTS with Spark Connect
+- **Platform**: Databricks Runtime 17.0+ with Lakeflow Declarative Pipelines
+- **Data Engineering**: [Lakeflow Declarative Pipelines](https://www.databricks.com/product/data-engineering/lakeflow-declarative-pipelines) for automated ETL
+- **Orchestration**: Lakeflow Jobs for workflow management and monitoring
+- **Governance**: Unity Catalog for unified data and AI governance
 - **Languages**: Python 3.11+, Spark SQL, PySpark (native optimizations)
 - **Geospatial**: Native H3 functions, GeoPandas 0.14+, Rasterio, Folium
 - **Machine Learning**: Scikit-learn 1.4+, LightGBM 4.3+, MLflow (enhanced)
 - **Visualization**: Plotly 5.18+, Matplotlib, Folium, Seaborn
-- **Data Storage**: Delta Lake (with Change Data Feed), GeoJSON
-- **Performance**: Photon Engine, Enhanced Arrow optimizations
-- **APIs**: FastAPI, REST endpoints with Spark Connect
+- **Data Storage**: Delta Lake (with Change Data Feed), Unity Catalog
+- **Performance**: Photon Engine, Serverless compute, Enhanced Arrow optimizations
+- **Data Sources**: AccuWeather API, NOAA PRISM, ERA5 Reanalysis
+- **APIs**: Real-time weather ingestion, REST endpoints with Spark Connect
 
 ## 📁 Project Structure
 
 ```
 insurance-climate-risk/
+├── lakeflow/                     # Lakeflow Declarative Pipelines (NEW)
+│   ├── 01_accuweather_ingestion_pipeline.py   # AccuWeather API ingestion
+│   ├── 02_historical_data_processing_pipeline.py # Historical climate data
+│   ├── pipeline_config.json              # Pipeline configuration
+│   └── climate_risk_workflow.py          # Lakeflow Jobs orchestration
 ├── notebooks/                    # Databricks notebooks
 │   ├── 01_drought_risk_model.py      # Drought risk assessment model
 │   ├── 02_flood_risk_model.py        # Flood risk assessment model
 │   ├── 03_risk_visualization.py      # Interactive dashboards and maps
 │   └── 04_model_deployment.py        # Production deployment pipeline
 ├── config/                       # Configuration files
-│   ├── cluster_config.yaml           # Databricks cluster configuration
-│   └── data_sources.yaml             # Data source configurations
+│   ├── cluster_config.yaml           # DBR 17 cluster configuration
+│   ├── data_sources.yaml             # Data source configurations (with AccuWeather)
+│   └── unity_catalog_schema.sql      # Unity Catalog schema setup
 ├── src/                         # Source code modules
 │   └── risk_engine.py                # Main risk assessment engine
 ├── data/                        # Data storage and samples
@@ -79,16 +89,21 @@ insurance-climate-risk/
 ├── visualizations/              # Charts and map outputs
 ├── tests/                       # Unit and integration tests
 ├── requirements.txt             # Python dependencies
+├── setup_environment.py         # Automated environment setup
+├── fix_type_inference.py        # Type inference diagnostic tool
+├── INSTALL.md                   # Installation guide
 └── README.md                    # This file
 ```
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Databricks workspace with Runtime 16.1+ LTS
-- Spark Connect enabled cluster
+- Databricks workspace with Runtime 17.0+ 
+- Unity Catalog enabled for data governance
+- Lakeflow Declarative Pipelines enabled
+- AccuWeather API key for real-time weather data
 - Access to climate and elevation data sources
-- MLflow for model tracking and deployment (enhanced in DBR 16+)
+- MLflow for model tracking and deployment
 
 ### 1. Environment Setup
 
@@ -111,23 +126,33 @@ pip install -r requirements.txt
 #### 🚨 **Installation Issues?**
 If you encounter errors like `ModuleNotFoundError: No module named 'distutils.msvccompiler'`, see our comprehensive [**Installation Guide**](INSTALL.md) for solutions.
 
-### 2. Data Preparation
-```python
-# Load climate and geographical datasets (DBR 16+ optimized)
-from src.risk_engine import ClimateRiskEngine
-
-# No need for Spark session - automatically managed in DBR 16+
-engine = ClimateRiskEngine()
-# Data sources are configured in config/data_sources.yaml
-# All data stored in Delta Lake format for optimal performance
+### 2. Unity Catalog Setup
+```sql
+-- Set up Unity Catalog schema and tables
+%run config/unity_catalog_schema.sql
 ```
 
-### 3. Model Development
-Run the notebooks in sequence:
-1. **01_drought_risk_model.py** - Develop drought risk assessment
-2. **02_flood_risk_model.py** - Build flood risk models
-3. **03_risk_visualization.py** - Create interactive visualizations
-4. **04_model_deployment.py** - Deploy to production
+### 3. Lakeflow Pipeline Deployment
+```python
+# Deploy Lakeflow Declarative Pipelines
+%run lakeflow/climate_risk_workflow.py
+
+# Configure AccuWeather API credentials
+dbutils.secrets.put(scope="climate-risk", key="accuweather-api-key", value="your_api_key")
+```
+
+### 4. Data Pipeline Execution
+1. **AccuWeather Ingestion** - Real-time weather data ingestion
+2. **Historical Processing** - Multi-source climate data processing  
+3. **Risk Modeling** - Automated drought and flood risk assessment
+4. **Analytics Materialization** - Generate insights and reports
+
+### 5. Model Development (Enhanced)
+Run the enhanced notebooks:
+1. **01_drought_risk_model.py** - Advanced drought risk with real-time data
+2. **02_flood_risk_model.py** - Enhanced flood models with elevation data
+3. **03_risk_visualization.py** - Interactive dashboards with live data
+4. **04_model_deployment.py** - Production deployment with monitoring
 
 ### 4. Risk Assessment
 ```python

@@ -1,0 +1,222 @@
+{
+  "pipeline_settings": {
+    "name": "climate_risk_data_ingestion",
+    "description": "Climate risk data ingestion and processing pipeline using Lakeflow Declarative Pipelines",
+    "edition": "ADVANCED",
+    "continuous": false,
+    "development": true,
+    "photon": true,
+    "serverless": true,
+    "cluster_settings": {
+      "spark_version": "17.0.x-scala2.12",
+      "node_type_id": "Standard_DS3_v2",
+      "driver_node_type_id": "Standard_DS3_v2",
+      "num_workers": 2,
+      "autotermination_minutes": 60,
+      "spark_conf": {
+        "spark.sql.adaptive.enabled": "true",
+        "spark.sql.adaptive.coalescePartitions.enabled": "true",
+        "spark.databricks.delta.optimizeWrite.enabled": "true",
+        "spark.databricks.delta.autoCompact.enabled": "true",
+        "spark.databricks.photon.enabled": "true",
+        "spark.databricks.photon.window.enabled": "true",
+        "spark.sql.execution.arrow.pyspark.enabled": "true"
+      }
+    },
+    "libraries": [
+      {
+        "pypi": {
+          "package": "requests>=2.31.0"
+        }
+      },
+      {
+        "pypi": {
+          "package": "pandas>=2.1.4"
+        }
+      },
+      {
+        "pypi": {
+          "package": "numpy>=1.25.2"
+        }
+      }
+    ],
+    "target": "climate_risk_catalog.processed_data",
+    "storage": "/mnt/climate-risk-pipeline/",
+    "configuration": {
+      "accuweather.api.key": "{{secrets/climate-risk/accuweather-api-key}}",
+      "accuweather.base.url": "http://dataservice.accuweather.com",
+      "pipeline.data_quality.enable_expectations": "true",
+      "pipeline.monitoring.enable_alerts": "true",
+      "pipeline.processing.batch_size": "10000",
+      "unity_catalog.enabled": "true",
+      "delta.enableChangeDataFeed": "true"
+    },
+    "notebooks": [
+      {
+        "path": "./01_accuweather_ingestion_pipeline",
+        "description": "AccuWeather real-time data ingestion"
+      },
+      {
+        "path": "./02_historical_data_processing_pipeline", 
+        "description": "Historical climate data processing"
+      }
+    ],
+    "schedule": {
+      "quartz_cron_expression": "0 */15 * * * ?",
+      "timezone_id": "UTC"
+    },
+    "email_notifications": {
+      "on_start": [],
+      "on_success": ["data-engineering@company.com"],
+      "on_failure": ["data-engineering@company.com", "alerts@company.com"],
+      "no_alert_for_skipped_runs": false
+    },
+    "health": {
+      "log_level": "INFO",
+      "enable_data_lineage": true,
+      "enable_observability": true
+    }
+  },
+  "data_quality_expectations": {
+    "global_expectations": [
+      {
+        "name": "valid_coordinates",
+        "constraint": "latitude BETWEEN -90 AND 90 AND longitude BETWEEN -180 AND 180",
+        "action": "DROP"
+      },
+      {
+        "name": "recent_data",
+        "constraint": "processing_timestamp >= current_timestamp() - INTERVAL 24 HOURS",
+        "action": "WARN"
+      },
+      {
+        "name": "h3_cells_populated",
+        "constraint": "h3_cell_7 IS NOT NULL AND h3_cell_8 IS NOT NULL",
+        "action": "FAIL"
+      }
+    ],
+    "table_specific_expectations": {
+      "bronze_accuweather_current": [
+        {
+          "name": "valid_temperature",
+          "constraint": "temperature_celsius BETWEEN -50 AND 60",
+          "action": "DROP"
+        },
+        {
+          "name": "valid_api_response",
+          "constraint": "weather_text IS NOT NULL",
+          "action": "WARN"
+        }
+      ],
+      "silver_unified_historical_climate": [
+        {
+          "name": "data_quality_threshold",
+          "constraint": "data_quality_score >= 0.5",
+          "action": "WARN"
+        },
+        {
+          "name": "temperature_range",
+          "constraint": "temperature_celsius BETWEEN -50 AND 60",
+          "action": "DROP"
+        }
+      ]
+    }
+  },
+  "monitoring_configuration": {
+    "data_freshness_alerts": {
+      "enabled": true,
+      "threshold_hours": 6,
+      "alert_channels": ["email", "slack"]
+    },
+    "data_quality_alerts": {
+      "enabled": true,
+      "quality_score_threshold": 0.8,
+      "alert_channels": ["email"]
+    },
+    "volume_alerts": {
+      "enabled": true,
+      "min_records_per_hour": 10,
+      "max_records_per_hour": 100000,
+      "alert_channels": ["email"]
+    },
+    "schema_evolution_alerts": {
+      "enabled": true,
+      "alert_channels": ["email", "slack"]
+    }
+  },
+  "cost_optimization": {
+    "auto_scaling": {
+      "enabled": true,
+      "min_workers": 1,
+      "max_workers": 8
+    },
+    "spot_instances": {
+      "enabled": true,
+      "spot_bid_price_percent": 50
+    },
+    "auto_termination": {
+      "enabled": true,
+      "idle_timeout_minutes": 30
+    },
+    "delta_optimization": {
+      "auto_optimize": true,
+      "auto_compact": true,
+      "optimize_write": true
+    }
+  },
+  "security_configuration": {
+    "unity_catalog": {
+      "enabled": true,
+      "catalog_name": "climate_risk_catalog",
+      "default_schema": "processed_data"
+    },
+    "access_control": {
+      "read_permissions": ["data-analysts", "data-scientists", "risk-modelers"],
+      "write_permissions": ["data-engineers"],
+      "admin_permissions": ["data-platform-admins"]
+    },
+    "encryption": {
+      "enabled": true,
+      "kms_key_id": "alias/databricks-unity-catalog"
+    },
+    "network_security": {
+      "vpc_endpoints": true,
+      "private_link": true
+    }
+  },
+  "disaster_recovery": {
+    "backup_configuration": {
+      "enabled": true,
+      "backup_frequency": "daily",
+      "retention_days": 30,
+      "cross_region_backup": true
+    },
+    "checkpoint_configuration": {
+      "enabled": true,
+      "checkpoint_location": "/mnt/climate-risk-pipeline/checkpoints/",
+      "checkpoint_retention_hours": 168
+    }
+  },
+  "integration_endpoints": {
+    "accuweather_api": {
+      "base_url": "http://dataservice.accuweather.com",
+      "authentication": "api_key",
+      "rate_limits": {
+        "requests_per_hour": 1000,
+        "burst_limit": 50
+      },
+      "timeout_seconds": 30,
+      "retry_policy": {
+        "max_retries": 3,
+        "backoff_multiplier": 2
+      }
+    },
+    "noaa_api": {
+      "base_url": "https://www.ncei.noaa.gov/data/",
+      "authentication": "none",
+      "rate_limits": {
+        "requests_per_hour": 500
+      }
+    }
+  }
+}

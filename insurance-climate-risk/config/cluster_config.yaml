@@ -1,16 +1,18 @@
-# Databricks Cluster Configuration for Climate Risk Modeling (DBR 16+)
+# Databricks Cluster Configuration for Climate Risk Modeling (DBR 17)
 
 cluster_config:
-  cluster_name: "climate-risk-analysis-dbr16"
-  spark_version: "16.1.x-scala2.12"  # DBR 16.1 LTS
+  cluster_name: "climate-risk-analysis-dbr17"
+  spark_version: "17.0.x-scala2.12"  # DBR 17 with Lakeflow support
   node_type_id: "i3.xlarge"
   driver_node_type_id: "i3.xlarge"
   num_workers: 4
   autotermination_minutes: 120
   
-  # Enhanced features for DBR 16+
+  # Enhanced features for DBR 17 with Lakeflow
   runtime_engine: "STANDARD"
   spark_connect_enabled: true
+  unity_catalog_enabled: true
+  lakeflow_enabled: true
   
   # Updated libraries for DBR 16+ compatibility
   libraries:
