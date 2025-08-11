@@ -51,13 +51,14 @@ This project leverages Databricks' latest geospatial capabilities to build sophi
 
 ## 🛠️ Technology Stack
 
-- **Platform**: Databricks Runtime 14.3+ with geospatial libraries
-- **Languages**: Python 3.9+, Spark SQL, PySpark
-- **Geospatial**: H3 3.7+, GeoPandas, Rasterio, Folium
-- **Machine Learning**: Scikit-learn, LightGBM, MLflow
-- **Visualization**: Plotly, Matplotlib, Folium, Seaborn
-- **Data Storage**: Delta Lake, Parquet, GeoJSON
-- **APIs**: FastAPI, REST endpoints
+- **Platform**: Databricks Runtime 16.1+ LTS with Spark Connect
+- **Languages**: Python 3.11+, Spark SQL, PySpark (native optimizations)
+- **Geospatial**: Native H3 functions, GeoPandas 0.14+, Rasterio, Folium
+- **Machine Learning**: Scikit-learn 1.4+, LightGBM 4.3+, MLflow (enhanced)
+- **Visualization**: Plotly 5.18+, Matplotlib, Folium, Seaborn
+- **Data Storage**: Delta Lake (with Change Data Feed), GeoJSON
+- **Performance**: Photon Engine, Enhanced Arrow optimizations
+- **APIs**: FastAPI, REST endpoints with Spark Connect
 
 ## 📁 Project Structure
 
@@ -84,26 +85,30 @@ insurance-climate-risk/
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Databricks workspace with Runtime 14.3+
+- Databricks workspace with Runtime 16.1+ LTS
+- Spark Connect enabled cluster
 - Access to climate and elevation data sources
-- MLflow for model tracking and deployment
+- MLflow for model tracking and deployment (enhanced in DBR 16+)
 
 ### 1. Environment Setup
 ```bash
-# Install dependencies
+# Install dependencies (PySpark managed by DBR 16+)
 pip install -r requirements.txt
 
-# Configure Databricks cluster with geospatial libraries
-# Use config/cluster_config.yaml for cluster setup
+# Configure Databricks cluster for DBR 16+ with Spark Connect
+# Use config/cluster_config.yaml for optimized cluster setup
+# Features: Photon Engine, Enhanced Arrow, Native H3 functions
 ```
 
 ### 2. Data Preparation
 ```python
-# Load climate and geographical datasets
+# Load climate and geographical datasets (DBR 16+ optimized)
 from src.risk_engine import ClimateRiskEngine
 
+# No need for Spark session - automatically managed in DBR 16+
 engine = ClimateRiskEngine()
 # Data sources are configured in config/data_sources.yaml
+# All data stored in Delta Lake format for optimal performance
 ```
 
 ### 3. Model Development

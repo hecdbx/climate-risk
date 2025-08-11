@@ -12,9 +12,9 @@
 
 # COMMAND ----------
 
+# DBR 16+ imports optimized for Spark Connect
 import pyspark.sql.functions as F
 from pyspark.sql.types import *
-from pyspark.sql import SparkSession
 import pandas as pd
 import numpy as np
 import json
@@ -28,7 +28,7 @@ import os
 sys.path.append('/Workspace/Repos/insurance-climate-risk/src')
 from risk_engine import ClimateRiskEngine, RiskVisualization
 
-spark = SparkSession.builder.appName("ModelDeployment").getOrCreate()
+# Note: Spark session automatically available and optimized in DBR 16+
 
 # COMMAND ----------
 
@@ -204,10 +204,11 @@ def create_batch_scoring_pipeline():
     # Convert back to Spark DataFrame
     results_df = spark.createDataFrame(pd.DataFrame(batch_results))
     
-    # Save results to Delta table
+    # Save results to Delta table (optimized for DBR 16+)
     results_df.write \
         .mode("append") \
         .option("mergeSchema", "true") \
+        .format("delta") \
         .saveAsTable("climate_risk.batch_assessments")
     
     return results_df

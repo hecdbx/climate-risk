@@ -1,44 +1,71 @@
-# Databricks Cluster Configuration for Climate Risk Modeling
+# Databricks Cluster Configuration for Climate Risk Modeling (DBR 16+)
 
 cluster_config:
-  cluster_name: "climate-risk-analysis"
-  spark_version: "14.3.x-scala2.12"
+  cluster_name: "climate-risk-analysis-dbr16"
+  spark_version: "16.1.x-scala2.12"  # DBR 16.1 LTS
   node_type_id: "i3.xlarge"
   driver_node_type_id: "i3.xlarge"
   num_workers: 4
   autotermination_minutes: 120
   
-  # Geospatial libraries and dependencies
+  # Enhanced features for DBR 16+
+  runtime_engine: "STANDARD"
+  spark_connect_enabled: true
+  
+  # Updated libraries for DBR 16+ compatibility
   libraries:
     - pypi:
-        package: "geopandas==0.14.1"
+        package: "geopandas==0.14.4"
     - pypi:
-        package: "folium==0.15.1"
+        package: "folium==0.16.0"
     - pypi:
-        package: "plotly==5.17.0"
+        package: "plotly==5.18.0"
     - pypi:
-        package: "rasterio==1.3.9"
+        package: "rasterio==1.3.10"
     - pypi:
-        package: "xarray==2023.12.0"
+        package: "xarray==2024.1.1"
     - pypi:
         package: "netCDF4==1.6.5"
     - pypi:
-        package: "h3==3.7.6"
+        package: "h3==3.7.7"
     - pypi:
-        package: "scikit-learn==1.3.2"
+        package: "scikit-learn==1.4.0"
     - pypi:
-        package: "pandas==2.1.4"
+        package: "pandas==2.2.0"
     - pypi:
-        package: "numpy==1.24.4"
+        package: "numpy==1.26.4"
+    - pypi:
+        package: "shapely==2.0.2"
+    - pypi:
+        package: "pydantic==2.6.1"
     
-  # Spark configuration for geospatial processing
+  # Optimized Spark configuration for DBR 16+ and Spark Connect
   spark_conf:
+    # Adaptive Query Execution (enhanced in DBR 16+)
     "spark.sql.adaptive.enabled": "true"
     "spark.sql.adaptive.coalescePartitions.enabled": "true"
-    "spark.serializer": "org.apache.spark.serializer.KryoSerializer"
-    "spark.kryo.registrator": "org.apache.spark.sql.catalyst.expressions.UnsafeRowSerializer"
+    "spark.sql.adaptive.advisoryPartitionSizeInBytes": "128MB"
+    
+    # Delta Lake optimizations
     "spark.databricks.delta.optimizeWrite.enabled": "true"
     "spark.databricks.delta.autoCompact.enabled": "true"
+    "spark.databricks.delta.properties.defaults.enableChangeDataFeed": "true"
+    
+    # Photon engine (available in DBR 16+)
+    "spark.databricks.photon.enabled": "true"
+    "spark.databricks.photon.window.enabled": "true"
+    
+    # Enhanced serialization
+    "spark.serializer": "org.apache.spark.serializer.KryoSerializer"
+    "spark.kryo.registrator": "org.apache.spark.sql.catalyst.expressions.UnsafeRowSerializer"
+    
+    # Memory optimizations for geospatial workloads
+    "spark.sql.execution.arrow.pyspark.enabled": "true"
+    "spark.sql.execution.arrow.maxRecordsPerBatch": "10000"
+    
+    # Spark Connect specific configurations
+    "spark.sql.execution.pythonUDF.arrow.enabled": "true"
+    "spark.databricks.sparkConnect.enabled": "true"
 
 # Environment variables
 environment:

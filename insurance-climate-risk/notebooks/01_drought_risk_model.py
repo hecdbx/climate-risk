@@ -12,28 +12,24 @@
 
 # COMMAND ----------
 
+# DBR 16+ imports with Spark Connect support
 import pyspark.sql.functions as F
 from pyspark.sql.types import *
-from pyspark.sql import SparkSession
 import h3
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import json
 
-# Geospatial functions
+# Geospatial functions - using native DBR 16+ support
 from pyspark.sql.functions import col, when, lit, expr
 import pyspark.sql.functions as sf
 
-# Initialize Spark session with geospatial extensions
-spark = SparkSession.builder \
-    .appName("DroughtRiskModel") \
-    .config("spark.sql.extensions", "org.apache.spark.sql.hudi.HoodieSparkSessionExtension") \
-    .getOrCreate()
+# Note: In DBR 16+, spark session is automatically available and optimized
+# No need to create session manually - Spark Connect handles this
 
-# Enable H3 functions
-spark.sql("CREATE OR REPLACE FUNCTION h3_latlng_to_cell AS 'com.uber.h3.spark.sql.H3_LatLngToCell'")
-spark.sql("CREATE OR REPLACE FUNCTION h3_cell_to_boundary AS 'com.uber.h3.spark.sql.H3_CellToBoundary'")
+# Native geospatial functions are built-in to DBR 16+
+# H3 functions are available natively without registration
 
 # COMMAND ----------
 
@@ -80,41 +76,41 @@ config = DroughtConfig()
 def load_climate_data():
     """Load and preprocess climate data from various sources"""
     
-    # Load precipitation data (example with synthetic data structure)
-    precipitation_df = spark.sql("""
+    # Load precipitation data using native DBR 16+ H3 functions
+    precipitation_df = spark.sql(f"""
         SELECT 
             latitude,
             longitude,
             date,
             precipitation_mm,
-            h3_latlng_to_cell(latitude, longitude, {resolution}) as h3_cell
+            h3_latlng_to_cell_string(latitude, longitude, {config.H3_RESOLUTION}) as h3_cell
         FROM climate.precipitation_daily
         WHERE date >= current_date() - interval 2 years
-    """.format(resolution=config.H3_RESOLUTION))
+    """)
     
     # Load temperature data
-    temperature_df = spark.sql("""
+    temperature_df = spark.sql(f"""
         SELECT 
             latitude,
             longitude,
             date,
             temperature_celsius,
-            h3_latlng_to_cell(latitude, longitude, {resolution}) as h3_cell
+            h3_latlng_to_cell_string(latitude, longitude, {config.H3_RESOLUTION}) as h3_cell
         FROM climate.temperature_daily
         WHERE date >= current_date() - interval 2 years
-    """.format(resolution=config.H3_RESOLUTION))
+    """)
     
     # Load soil moisture data
-    soil_moisture_df = spark.sql("""
+    soil_moisture_df = spark.sql(f"""
         SELECT 
             latitude,
             longitude,
             date,
             soil_moisture_percent,
-            h3_latlng_to_cell(latitude, longitude, {resolution}) as h3_cell
+            h3_latlng_to_cell_string(latitude, longitude, {config.H3_RESOLUTION}) as h3_cell
         FROM climate.soil_moisture_daily
         WHERE date >= current_date() - interval 2 years
-    """.format(resolution=config.H3_RESOLUTION))
+    """)
     
     return precipitation_df, temperature_df, soil_moisture_df
 
@@ -158,7 +154,8 @@ def create_sample_data():
 
 # Load or create sample data
 climate_df = create_sample_data()
-climate_df.cache()
+# Use persist() instead of cache() for better DBR 16+ performance
+climate_df = climate_df.persist()
 
 print(f"Loaded {climate_df.count()} climate records")
 climate_df.show(5)
@@ -253,7 +250,7 @@ drought_indicators = calculate_temperature_anomalies(drought_indicators)
 print("Calculating soil moisture index...")
 drought_indicators = calculate_soil_moisture_index(drought_indicators)
 
-drought_indicators.cache()
+drought_indicators = drought_indicators.persist()
 print(f"Calculated drought indicators for {drought_indicators.count()} records")
 
 # COMMAND ----------
@@ -346,7 +343,7 @@ def aggregate_risk_by_region(df):
 
 # Calculate regional risk aggregations
 regional_drought_risk = aggregate_risk_by_region(drought_risk_df)
-regional_drought_risk.cache()
+regional_drought_risk = regional_drought_risk.persist()
 
 print("Regional Drought Risk Summary:")
 regional_drought_risk.groupBy("risk_category").agg(
@@ -404,16 +401,18 @@ insurance_risk_df.groupBy("insurance_risk_class", "recommended_action").count().
 
 # COMMAND ----------
 
-# Save detailed drought risk data
+# Save detailed drought risk data using Delta format (optimized for DBR 16+)
 drought_risk_df.write \
     .mode("overwrite") \
     .partitionBy("date") \
-    .parquet("/mnt/risk-models/drought_risk_detailed")
+    .format("delta") \
+    .saveAsTable("climate_risk.drought_risk_detailed")
 
 # Save regional aggregated risk
 insurance_risk_df.write \
     .mode("overwrite") \
-    .parquet("/mnt/risk-models/drought_risk_regional")
+    .format("delta") \
+    .saveAsTable("climate_risk.drought_risk_regional")
 
 # Create summary table for quick access
 summary_df = insurance_risk_df.select(

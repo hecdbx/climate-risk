@@ -12,9 +12,9 @@
 
 # COMMAND ----------
 
+# DBR 16+ imports with native geospatial support
 import pyspark.sql.functions as F
 from pyspark.sql.types import *
-from pyspark.sql import SparkSession
 import h3
 import pandas as pd
 import numpy as np
@@ -22,21 +22,12 @@ from datetime import datetime, timedelta
 import json
 import math
 
-# Geospatial functions
+# Geospatial functions - native in DBR 16+
 from pyspark.sql.functions import col, when, lit, expr
 import pyspark.sql.functions as sf
 
-# Initialize Spark session
-spark = SparkSession.builder \
-    .appName("FloodRiskModel") \
-    .config("spark.sql.extensions", "org.apache.spark.sql.hudi.HoodieSparkSessionExtension") \
-    .getOrCreate()
-
-# Enable geospatial functions
-spark.sql("CREATE OR REPLACE FUNCTION h3_latlng_to_cell AS 'com.uber.h3.spark.sql.H3_LatLngToCell'")
-spark.sql("CREATE OR REPLACE FUNCTION h3_cell_to_boundary AS 'com.uber.h3.spark.sql.H3_CellToBoundary'")
-spark.sql("CREATE OR REPLACE FUNCTION h3_get_resolution AS 'com.uber.h3.spark.sql.H3_GetResolution'")
-spark.sql("CREATE OR REPLACE FUNCTION h3_k_ring AS 'com.uber.h3.spark.sql.H3_KRing'")
+# Note: Spark session automatically available in DBR 16+ with Spark Connect
+# All H3 and geospatial functions are built-in and optimized
 
 # COMMAND ----------
 
@@ -158,7 +149,7 @@ def calculate_topographic_factors(elevation_df):
 print("Generating elevation and topographic data...")
 elevation_df = create_elevation_data()
 elevation_df = calculate_topographic_factors(elevation_df)
-elevation_df.cache()
+elevation_df = elevation_df.persist()
 
 print(f"Created elevation data for {elevation_df.count()} locations")
 elevation_df.show(5)
@@ -238,7 +229,7 @@ def classify_precipitation_events(precip_df):
 print("Generating precipitation data...")
 precipitation_df = create_precipitation_data()
 precipitation_df = classify_precipitation_events(precipitation_df)
-precipitation_df.cache()
+precipitation_df = precipitation_df.persist()
 
 print(f"Created precipitation data for {precipitation_df.count()} observations")
 
@@ -427,7 +418,7 @@ def calculate_flood_risk_score():
 # Calculate comprehensive flood risk
 print("Calculating composite flood risk scores...")
 flood_risk_model_df = calculate_flood_risk_score()
-flood_risk_model_df.cache()
+flood_risk_model_df = flood_risk_model_df.persist()
 
 # Show risk distribution
 print("Flood Risk Level Distribution:")
@@ -580,20 +571,23 @@ validate_flood_model()
 
 # COMMAND ----------
 
-# Save detailed flood risk model results
+# Save detailed flood risk model results using Delta tables (DBR 16+ optimized)
 insurance_flood_df.write \
     .mode("overwrite") \
     .partitionBy("flood_risk_level") \
-    .parquet("/mnt/risk-models/flood_risk_detailed")
+    .format("delta") \
+    .saveAsTable("climate_risk.flood_risk_detailed")
 
 # Save regional summaries
 regional_flood_summary.write \
     .mode("overwrite") \
-    .parquet("/mnt/risk-models/flood_risk_regional_summary")
+    .format("delta") \
+    .saveAsTable("climate_risk.flood_risk_regional_summary")
 
 elevation_flood_risk.write \
     .mode("overwrite") \
-    .parquet("/mnt/risk-models/flood_risk_elevation_analysis")
+    .format("delta") \
+    .saveAsTable("climate_risk.flood_risk_elevation_analysis")
 
 # Create summary view for quick access
 flood_summary_df = insurance_flood_df.select(

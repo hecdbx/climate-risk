@@ -5,7 +5,6 @@ This module provides a unified interface for drought and flood risk assessment
 using Databricks geospatial functions and climate data analysis.
 """
 
-from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 from pyspark.sql.types import *
 import h3
@@ -19,18 +18,16 @@ import json
 class ClimateRiskEngine:
     """
     Main engine for climate risk assessment combining drought and flood models.
+    Optimized for Databricks Runtime 16+ with Spark Connect.
     """
     
-    def __init__(self, spark_session: Optional[SparkSession] = None):
+    def __init__(self):
         """
-        Initialize the Climate Risk Engine.
+        Initialize the Climate Risk Engine for DBR 16+.
         
-        Args:
-            spark_session: Optional Spark session. If None, creates a new one.
+        Note: In DBR 16+, Spark session is automatically available and managed.
+        All geospatial functions are native and pre-configured.
         """
-        self.spark = spark_session or self._create_spark_session()
-        self._initialize_geospatial_functions()
-        
         # Model configurations
         self.h3_resolution = 7
         self.risk_weights = {
@@ -38,18 +35,8 @@ class ClimateRiskEngine:
             'flood': 0.5
         }
         
-    def _create_spark_session(self) -> SparkSession:
-        """Create Spark session with geospatial extensions."""
-        return SparkSession.builder \
-            .appName("ClimateRiskEngine") \
-            .config("spark.sql.extensions", "org.apache.spark.sql.hudi.HoodieSparkSessionExtension") \
-            .getOrCreate()
-    
-    def _initialize_geospatial_functions(self):
-        """Initialize H3 and other geospatial functions."""
-        self.spark.sql("CREATE OR REPLACE FUNCTION h3_latlng_to_cell AS 'com.uber.h3.spark.sql.H3_LatLngToCell'")
-        self.spark.sql("CREATE OR REPLACE FUNCTION h3_cell_to_boundary AS 'com.uber.h3.spark.sql.H3_CellToBoundary'")
-        self.spark.sql("CREATE OR REPLACE FUNCTION h3_k_ring AS 'com.uber.h3.spark.sql.H3_KRing'")
+        # Note: No need to initialize Spark session or geospatial functions
+        # They are automatically available in DBR 16+ with enhanced performance
     
     def assess_drought_risk(self, 
                            latitude: float, 
@@ -68,7 +55,7 @@ class ClimateRiskEngine:
         """
         h3_cell = h3.latlng_to_cell(latitude, longitude, self.h3_resolution)
         
-        # Query existing drought risk data
+        # Query existing drought risk data from Delta tables (DBR 16+ optimized)
         drought_query = f"""
         SELECT 
             h3_cell,
@@ -77,12 +64,13 @@ class ClimateRiskEngine:
             insurance_risk_class,
             risk_multiplier,
             recommended_action
-        FROM drought_risk_summary 
+        FROM climate_risk.drought_risk_regional 
         WHERE h3_cell = '{h3_cell}'
         """
         
         try:
-            result = self.spark.sql(drought_query).collect()
+            # Use spark.sql() - session is automatically available in DBR 16+
+            result = spark.sql(drought_query).collect()
             if result:
                 row = result[0]
                 return {
@@ -125,7 +113,7 @@ class ClimateRiskEngine:
         """
         h3_cell = h3.latlng_to_cell(latitude, longitude, self.h3_resolution)
         
-        # Query existing flood risk data
+        # Query existing flood risk data from Delta tables
         flood_query = f"""
         SELECT 
             h3_cell,
@@ -136,12 +124,12 @@ class ClimateRiskEngine:
             estimated_return_period,
             coverage_recommendation,
             elevation_m
-        FROM flood_risk_summary 
+        FROM climate_risk.flood_risk_summary 
         WHERE h3_cell = '{h3_cell}'
         """
         
         try:
-            result = self.spark.sql(flood_query).collect()
+            result = spark.sql(flood_query).collect()
             if result:
                 row = result[0]
                 return {

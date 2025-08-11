@@ -12,9 +12,9 @@
 
 # COMMAND ----------
 
+# DBR 16+ optimized imports
 import pyspark.sql.functions as F
 from pyspark.sql.types import *
-from pyspark.sql import SparkSession
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -31,7 +31,7 @@ import geopandas as gpd
 from shapely.geometry import Polygon
 import branca.colormap as cm
 
-spark = SparkSession.builder.appName("RiskVisualization").getOrCreate()
+# Note: Spark session automatically available in DBR 16+
 
 # COMMAND ----------
 
@@ -43,9 +43,9 @@ spark = SparkSession.builder.appName("RiskVisualization").getOrCreate()
 def load_risk_data():
     """Load drought and flood risk model results"""
     
-    # Load drought risk data
+    # Load drought risk data from Delta tables (DBR 16+ optimized)
     try:
-        drought_df = spark.sql("SELECT * FROM drought_risk_summary LIMIT 5000")
+        drought_df = spark.sql("SELECT * FROM climate_risk.drought_risk_regional LIMIT 5000")
         print(f"Loaded {drought_df.count()} drought risk records")
     except:
         print("Drought risk data not available, using sample data")
@@ -56,9 +56,9 @@ def load_risk_data():
              'avg_risk_score': 0.45, 'risk_category': 'moderate', 'risk_multiplier': 1.2}
         ])
     
-    # Load flood risk data
+    # Load flood risk data from Delta tables
     try:
-        flood_df = spark.sql("SELECT * FROM flood_risk_summary LIMIT 5000")
+        flood_df = spark.sql("SELECT * FROM climate_risk.flood_risk_summary LIMIT 5000")
         print(f"Loaded {flood_df.count()} flood risk records")
     except:
         print("Flood risk data not available, using sample data")
