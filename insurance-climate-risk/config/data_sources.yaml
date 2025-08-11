@@ -1,0 +1,266 @@
+# Data Sources Configuration for Climate Risk Models
+
+# External data sources and APIs
+data_sources:
+  
+  # Climate Data Sources
+  climate:
+    noaa_prism:
+      name: "NOAA PRISM Climate Data"
+      url: "https://prism.oregonstate.edu/"
+      description: "High-resolution spatial climate data for the United States"
+      variables:
+        - precipitation
+        - temperature
+        - dewpoint
+      resolution: "4km"
+      update_frequency: "monthly"
+      format: "NetCDF, ASCII Grid"
+      
+    era5_reanalysis:
+      name: "ERA5 Reanalysis Data"
+      url: "https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels"
+      description: "Global atmospheric reanalysis data"
+      variables:
+        - temperature_2m
+        - precipitation
+        - soil_moisture
+        - evaporation
+      resolution: "25km"
+      update_frequency: "daily"
+      format: "NetCDF"
+      
+    modis:
+      name: "MODIS Satellite Data"
+      url: "https://modis.gsfc.nasa.gov/"
+      description: "Satellite-derived vegetation and land surface data"
+      variables:
+        - ndvi
+        - evi
+        - land_surface_temperature
+        - snow_cover
+      resolution: "500m-1km"
+      update_frequency: "daily"
+      format: "HDF"
+
+  # Elevation and Topography
+  topography:
+    usgs_ned:
+      name: "USGS National Elevation Dataset"
+      url: "https://www.usgs.gov/core-science-systems/ngp/3dep"
+      description: "High-resolution elevation data for the United States"
+      resolution: "1m, 3m, 10m, 30m"
+      format: "GeoTIFF"
+      coverage: "United States"
+      
+    srtm:
+      name: "Shuttle Radar Topography Mission"
+      url: "https://www2.jpl.nasa.gov/srtm/"
+      description: "Global elevation data"
+      resolution: "30m, 90m"
+      format: "GeoTIFF"
+      coverage: "Global"
+      
+    alos_world3d:
+      name: "ALOS World 3D"
+      url: "https://www.eorc.jaxa.jp/ALOS/en/aw3d30/"
+      description: "Global digital surface model"
+      resolution: "30m"
+      format: "GeoTIFF"
+      coverage: "Global"
+
+  # Hydrography and Water Features
+  hydrography:
+    nhdplus:
+      name: "National Hydrography Dataset Plus"
+      url: "https://www.usgs.gov/core-science-systems/ngp/national-hydrography"
+      description: "Comprehensive set of surface water features"
+      features:
+        - streams
+        - rivers
+        - lakes
+        - watersheds
+      format: "Shapefile, GeoDatabase"
+      coverage: "United States"
+      
+    hydrosheds:
+      name: "HydroSHEDS"
+      url: "https://www.hydrosheds.org/"
+      description: "Global hydrographic data"
+      features:
+        - drainage_basins
+        - river_networks
+        - water_bodies
+      resolution: "15arc-seconds to 30arc-seconds"
+      format: "Shapefile"
+      coverage: "Global"
+
+  # Historical Events
+  historical_events:
+    drought_monitor:
+      name: "US Drought Monitor"
+      url: "https://droughtmonitor.unl.edu/"
+      description: "Weekly drought status maps and data"
+      variables:
+        - drought_intensity
+        - drought_classification
+        - affected_area
+      update_frequency: "weekly"
+      format: "Shapefile, CSV"
+      
+    noaa_storm_events:
+      name: "NOAA Storm Events Database"
+      url: "https://www.ncdc.noaa.gov/stormevents/"
+      description: "Comprehensive storm and flood event records"
+      variables:
+        - flood_events
+        - storm_type
+        - damage_estimates
+        - fatalities
+      update_frequency: "monthly"
+      format: "CSV"
+      
+    fema_disasters:
+      name: "FEMA Disaster Declarations"
+      url: "https://www.fema.gov/openfema-data-page/disaster-declarations-summaries-v2"
+      description: "Federal disaster declaration data"
+      variables:
+        - disaster_type
+        - declaration_date
+        - affected_areas
+        - damage_categories
+      format: "JSON, CSV"
+
+# Data pipelines and processing
+data_pipelines:
+  
+  ingestion:
+    climate_data_pipeline:
+      name: "Climate Data Ingestion"
+      description: "Automated ingestion of climate data from multiple sources"
+      schedule: "daily"
+      sources:
+        - noaa_prism
+        - era5_reanalysis
+        - modis
+      output_format: "Delta Lake"
+      partitioning: ["year", "month", "source"]
+      
+    elevation_data_pipeline:
+      name: "Elevation Data Processing"
+      description: "Process and index elevation data for spatial analysis"
+      schedule: "weekly"
+      sources:
+        - usgs_ned
+        - srtm
+      processing_steps:
+        - reproject_to_standard_crs
+        - generate_derivatives  # slope, aspect, curvature
+        - create_h3_index
+      output_format: "Delta Lake"
+      
+    historical_events_pipeline:
+      name: "Historical Events Integration"
+      description: "Standardize and integrate historical climate event data"
+      schedule: "weekly"
+      sources:
+        - drought_monitor
+        - noaa_storm_events
+        - fema_disasters
+      processing_steps:
+        - geocode_locations
+        - standardize_severity_scales
+        - create_h3_spatial_index
+      output_format: "Delta Lake"
+
+# Quality assurance and validation
+data_quality:
+  
+  validation_rules:
+    climate_data:
+      - rule: "temperature_range"
+        description: "Temperature values within reasonable range"
+        condition: "temperature_celsius BETWEEN -60 AND 60"
+      - rule: "precipitation_non_negative"
+        description: "Precipitation values cannot be negative"
+        condition: "precipitation_mm >= 0"
+      - rule: "temporal_continuity"
+        description: "No gaps in time series data"
+        condition: "date_diff < 2 days"
+        
+    elevation_data:
+      - rule: "elevation_range"
+        description: "Elevation values within valid range"
+        condition: "elevation_m BETWEEN -500 AND 9000"
+      - rule: "spatial_continuity"
+        description: "No large gaps in spatial coverage"
+        condition: "neighbor_distance < 100m"
+        
+    spatial_consistency:
+      - rule: "coordinate_validity"
+        description: "Valid latitude/longitude coordinates"
+        condition: "latitude BETWEEN -90 AND 90 AND longitude BETWEEN -180 AND 180"
+      - rule: "h3_index_validity"
+        description: "Valid H3 cell identifiers"
+        condition: "h3_is_valid(h3_cell) = true"
+
+  monitoring:
+    data_freshness:
+      climate_data: "24 hours"
+      elevation_data: "30 days"
+      historical_events: "7 days"
+      
+    completeness_thresholds:
+      minimum_coverage: 0.95  # 95% spatial coverage required
+      maximum_missing_days: 5  # No more than 5 consecutive missing days
+      
+    accuracy_metrics:
+      climate_validation: "Cross-validation with weather stations"
+      elevation_validation: "Comparison with survey benchmarks"
+      event_validation: "Cross-reference with multiple sources"
+
+# Storage and access configuration
+storage:
+  
+  raw_data:
+    path: "/mnt/climate-data/raw/"
+    format: "delta"
+    retention_days: 1095  # 3 years
+    compression: "zstd"
+    
+  processed_data:
+    path: "/mnt/climate-data/processed/"
+    format: "delta"
+    partitioning: ["year", "month", "data_type"]
+    optimization: "auto_optimize"
+    
+  models:
+    path: "/mnt/risk-models/"
+    format: "delta"
+    versioning: true
+    access_control: "rbac"
+
+# API endpoints and external services
+external_apis:
+  
+  weather_services:
+    openweathermap:
+      endpoint: "https://api.openweathermap.org/data/2.5/"
+      authentication: "api_key"
+      rate_limit: "1000 calls/day"
+      
+    weatherapi:
+      endpoint: "https://api.weatherapi.com/v1/"
+      authentication: "api_key"
+      rate_limit: "1000000 calls/month"
+      
+  geospatial_services:
+    usgs_elevation:
+      endpoint: "https://elevation-api.io/api/elevation"
+      authentication: "none"
+      rate_limit: "1000 requests/second"
+      
+    nominatim:
+      endpoint: "https://nominatim.openstreetmap.org/"
+      authentication: "none"
+      rate_limit: "1 request/second"
