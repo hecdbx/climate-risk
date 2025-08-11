@@ -1,41 +1,45 @@
 # Climate Risk Insurance Models - DBR 16+ Compatible Dependencies
 
+# Python compatibility fix for distutils removal in Python 3.12+
+setuptools>=68.0.0
+wheel>=0.41.0
+
 # Core Data Processing (DBR 16+ compatible versions)
 # Note: PySpark is pre-installed and managed by DBR 16+
-pandas==2.2.0
-numpy==1.26.4
-scipy==1.12.0
+pandas==2.1.4
+numpy==1.25.2
+scipy==1.11.4
 
-# Geospatial Analysis (Updated for DBR 16+)
-geopandas==0.14.4
+# Geospatial Analysis (Updated for DBR 16+ with compatibility fixes)
+geopandas==0.14.1
 shapely==2.0.2
-fiona==1.9.6
-rasterio==1.3.10
-h3==3.7.7
-folium==0.16.0
-contextily==1.5.0
+fiona==1.9.5
+rasterio==1.3.9
+h3==3.7.6
+folium==0.15.1
+contextily==1.4.0
 pyproj==3.6.1
 
 # Climate Data Processing (Enhanced for DBR 16+)
-xarray==2024.1.1
+xarray==2023.12.0
 netCDF4==1.6.5
-cftime==1.6.4
-dask==2024.1.1
-zarr==2.17.0
+cftime==1.6.3
+dask==2023.12.1
+zarr==2.16.1
 
-# Machine Learning (Updated versions)
-scikit-learn==1.4.0
-lightgbm==4.3.0
-xgboost==2.0.3
-catboost==1.2.3
+# Machine Learning (Compatible versions)
+scikit-learn==1.3.2
+lightgbm==4.1.0
+xgboost==2.0.2
+catboost==1.2.2
 
-# Visualization (Enhanced compatibility)
-plotly==5.18.0
-matplotlib==3.8.3
-seaborn==0.13.2
-bokeh==3.4.0
-holoviews==1.18.3
-panel==1.4.0
+# Visualization (Stable compatibility)
+plotly==5.17.0
+matplotlib==3.8.2
+seaborn==0.13.0
+bokeh==3.3.2
+holoviews==1.18.1
+panel==1.3.6
 
 # Web and API
 requests==2.31.0

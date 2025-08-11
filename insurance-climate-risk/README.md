@@ -91,6 +91,14 @@ insurance-climate-risk/
 - MLflow for model tracking and deployment (enhanced in DBR 16+)
 
 ### 1. Environment Setup
+
+#### Quick Setup (Recommended)
+```bash
+# Automated setup with compatibility fixes
+python setup_environment.py
+```
+
+#### Manual Setup
 ```bash
 # Install dependencies (PySpark managed by DBR 16+)
 pip install -r requirements.txt
@@ -99,6 +107,9 @@ pip install -r requirements.txt
 # Use config/cluster_config.yaml for optimized cluster setup
 # Features: Photon Engine, Enhanced Arrow, Native H3 functions
 ```
+
+#### 🚨 **Installation Issues?**
+If you encounter errors like `ModuleNotFoundError: No module named 'distutils.msvccompiler'`, see our comprehensive [**Installation Guide**](INSTALL.md) for solutions.
 
 ### 2. Data Preparation
 ```python
