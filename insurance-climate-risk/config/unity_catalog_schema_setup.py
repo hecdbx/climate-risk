@@ -20,13 +20,13 @@
 # MAGIC %md
 # MAGIC ## Configuration Parameters
 # MAGIC 
-# MAGIC Modify the catalog name as needed for your environment.
+# MAGIC Set the catalog name parameter using Databricks widgets. You can modify this value in the widget UI or programmatically.
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC -- Parameter for catalog name - modify this value as needed
-# MAGIC SET VAR catalog_name = 'demo_hc';
+# MAGIC CREATE WIDGET TEXT catalog_name DEFAULT 'demo_hc';
 
 # COMMAND ----------
 
@@ -39,14 +39,14 @@
 
 # MAGIC %sql
 # MAGIC -- Create catalog for climate risk data
-# MAGIC CREATE CATALOG IF NOT EXISTS ${catalog_name}
+# MAGIC CREATE CATALOG IF NOT EXISTS :catalog_name
 # MAGIC COMMENT 'Unified catalog for climate risk insurance models and data';
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC -- Use the catalog
-# MAGIC USE CATALOG ${catalog_name};
+# MAGIC USE CATALOG :catalog_name;
 
 # COMMAND ----------
 
@@ -444,25 +444,25 @@
 
 # MAGIC %sql
 # MAGIC -- Grant permissions (adjust as needed for your organization)
-# MAGIC GRANT USAGE ON CATALOG ${catalog_name} TO `domain-users`;
-# MAGIC GRANT USAGE ON SCHEMA ${catalog_name}.raw_data TO `domain-users`;
-# MAGIC GRANT USAGE ON SCHEMA ${catalog_name}.processed_data TO `domain-users`;
-# MAGIC GRANT USAGE ON SCHEMA ${catalog_name}.risk_models TO `domain-users`;
-# MAGIC GRANT USAGE ON SCHEMA ${catalog_name}.analytics TO `domain-users`;
+# MAGIC GRANT USAGE ON CATALOG :catalog_name TO `domain-users`;
+# MAGIC GRANT USAGE ON SCHEMA :catalog_name.raw_data TO `domain-users`;
+# MAGIC GRANT USAGE ON SCHEMA :catalog_name.processed_data TO `domain-users`;
+# MAGIC GRANT USAGE ON SCHEMA :catalog_name.risk_models TO `domain-users`;
+# MAGIC GRANT USAGE ON SCHEMA :catalog_name.analytics TO `domain-users`;
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC -- Grant read access to analytics teams
-# MAGIC GRANT SELECT ON SCHEMA ${catalog_name}.analytics TO `analytics-team`;
+# MAGIC GRANT SELECT ON SCHEMA :catalog_name.analytics TO `analytics-team`;
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC -- Grant write access to data engineering teams
-# MAGIC GRANT ALL PRIVILEGES ON SCHEMA ${catalog_name}.raw_data TO `data-engineering-team`;
-# MAGIC GRANT ALL PRIVILEGES ON SCHEMA ${catalog_name}.processed_data TO `data-engineering-team`;
-# MAGIC GRANT ALL PRIVILEGES ON SCHEMA ${catalog_name}.risk_models TO `data-engineering-team`;
+# MAGIC GRANT ALL PRIVILEGES ON SCHEMA :catalog_name.raw_data TO `data-engineering-team`;
+# MAGIC GRANT ALL PRIVILEGES ON SCHEMA :catalog_name.processed_data TO `data-engineering-team`;
+# MAGIC GRANT ALL PRIVILEGES ON SCHEMA :catalog_name.risk_models TO `data-engineering-team`;
 
 # COMMAND ----------
 
@@ -475,31 +475,31 @@
 
 # MAGIC %sql
 # MAGIC -- Show created schemas
-# MAGIC SHOW SCHEMAS IN ${catalog_name};
+# MAGIC SHOW SCHEMAS IN :catalog_name;
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC -- Show tables in raw_data schema
-# MAGIC SHOW TABLES IN ${catalog_name}.raw_data;
+# MAGIC SHOW TABLES IN :catalog_name.raw_data;
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC -- Show tables in processed_data schema
-# MAGIC SHOW TABLES IN ${catalog_name}.processed_data;
+# MAGIC SHOW TABLES IN :catalog_name.processed_data;
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC -- Show tables in risk_models schema
-# MAGIC SHOW TABLES IN ${catalog_name}.risk_models;
+# MAGIC SHOW TABLES IN :catalog_name.risk_models;
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC -- Show views in analytics schema
-# MAGIC SHOW TABLES IN ${catalog_name}.analytics;
+# MAGIC SHOW TABLES IN :catalog_name.analytics;
 
 # COMMAND ----------
 
@@ -509,7 +509,7 @@
 # MAGIC Your Unity Catalog schema for the Climate Risk Insurance Models has been successfully set up with:
 # MAGIC 
 # MAGIC ### Catalogs & Schemas
-# MAGIC - **Catalog:** `${catalog_name}`
+# MAGIC - **Catalog:** `:catalog_name`
 # MAGIC - **Schemas:** `raw_data`, `processed_data`, `risk_models`, `analytics`
 # MAGIC 
 # MAGIC ### Raw Data Tables (4)
