@@ -1,12 +1,15 @@
 -- Unity Catalog Schema Configuration for Climate Risk Insurance Models
 -- This script sets up the complete schema structure for climate data ingestion and processing
 
+-- Parameter for catalog name - modify this value as needed
+SET VAR catalog_name = 'demo_hc';
+
 -- Create catalog for climate risk data
-CREATE CATALOG IF NOT EXISTS climate_risk_catalog
+CREATE CATALOG IF NOT EXISTS ${catalog_name}
 COMMENT 'Unified catalog for climate risk insurance models and data';
 
 -- Use the catalog
-USE CATALOG climate_risk_catalog;
+USE CATALOG ${catalog_name};
 
 -- Create schemas for different data domains
 CREATE SCHEMA IF NOT EXISTS raw_data
@@ -48,11 +51,10 @@ CREATE OR REPLACE TABLE accuweather_current_conditions (
   h3_cell_8 STRING GENERATED ALWAYS AS (h3_latlng_to_cell_string(latitude, longitude, 8))
 ) 
 USING DELTA
-PARTITIONED BY (DATE(observation_time))
+CLUSTER BY (DATE(observation_time), location_key)
 TBLPROPERTIES (
   'delta.enableChangeDataFeed' = 'true',
-  'delta.autoOptimize.optimizeWrite' = 'true',
-  'delta.autoOptimize.autoCompact' = 'true'
+  'delta.enablePredictiveOptimization' = 'true'
 )
 COMMENT 'Real-time current weather conditions from AccuWeather API';
 
@@ -76,11 +78,10 @@ CREATE OR REPLACE TABLE accuweather_daily_forecasts (
   h3_cell_8 STRING GENERATED ALWAYS AS (h3_latlng_to_cell_string(latitude, longitude, 8))
 )
 USING DELTA
-PARTITIONED BY (forecast_date)
+CLUSTER BY (forecast_date, location_key)
 TBLPROPERTIES (
   'delta.enableChangeDataFeed' = 'true',
-  'delta.autoOptimize.optimizeWrite' = 'true',
-  'delta.autoOptimize.autoCompact' = 'true'
+  'delta.enablePredictiveOptimization' = 'true'
 )
 COMMENT 'Daily weather forecasts from AccuWeather API';
 
@@ -103,11 +104,10 @@ CREATE OR REPLACE TABLE historical_climate_data (
   h3_cell_8 STRING GENERATED ALWAYS AS (h3_latlng_to_cell_string(latitude, longitude, 8))
 )
 USING DELTA
-PARTITIONED BY (source, observation_date)
+CLUSTER BY (source, observation_date, location_id)
 TBLPROPERTIES (
   'delta.enableChangeDataFeed' = 'true',
-  'delta.autoOptimize.optimizeWrite' = 'true',
-  'delta.autoOptimize.autoCompact' = 'true'
+  'delta.enablePredictiveOptimization' = 'true'
 )
 COMMENT 'Historical climate data from various sources (NOAA, ERA5, etc.)';
 
@@ -131,8 +131,7 @@ CREATE OR REPLACE TABLE elevation_data (
 USING DELTA
 TBLPROPERTIES (
   'delta.enableChangeDataFeed' = 'true',
-  'delta.autoOptimize.optimizeWrite' = 'true',
-  'delta.autoOptimize.autoCompact' = 'true'
+  'delta.enablePredictiveOptimization' = 'true'
 )
 COMMENT 'Elevation and topographic data for flood risk modeling';
 
@@ -157,11 +156,10 @@ CREATE OR REPLACE TABLE climate_observations (
   processing_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
 )
 USING DELTA
-PARTITIONED BY (DATE(observation_timestamp), data_source)
+CLUSTER BY (DATE(observation_timestamp), data_source, h3_cell_7)
 TBLPROPERTIES (
   'delta.enableChangeDataFeed' = 'true',
-  'delta.autoOptimize.optimizeWrite' = 'true',
-  'delta.autoOptimize.autoCompact' = 'true'
+  'delta.enablePredictiveOptimization' = 'true'
 )
 COMMENT 'Standardized climate observations from all sources';
 
@@ -185,11 +183,10 @@ CREATE OR REPLACE TABLE climate_aggregations (
   processing_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
 )
 USING DELTA
-PARTITIONED BY (aggregation_date)
+CLUSTER BY (aggregation_date, h3_cell_7)
 TBLPROPERTIES (
   'delta.enableChangeDataFeed' = 'true',
-  'delta.autoOptimize.optimizeWrite' = 'true',
-  'delta.autoOptimize.autoCompact' = 'true'
+  'delta.enablePredictiveOptimization' = 'true'
 )
 COMMENT 'Daily aggregated climate data by H3 cell for risk modeling';
 
@@ -220,11 +217,10 @@ CREATE OR REPLACE TABLE drought_risk_assessments (
   processing_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
 )
 USING DELTA
-PARTITIONED BY (assessment_date)
+CLUSTER BY (assessment_date, h3_cell_7, drought_risk_level)
 TBLPROPERTIES (
   'delta.enableChangeDataFeed' = 'true',
-  'delta.autoOptimize.optimizeWrite' = 'true',
-  'delta.autoOptimize.autoCompact' = 'true'
+  'delta.enablePredictiveOptimization' = 'true'
 )
 COMMENT 'Drought risk assessments by location and date';
 
@@ -251,11 +247,10 @@ CREATE OR REPLACE TABLE flood_risk_assessments (
   processing_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
 )
 USING DELTA
-PARTITIONED BY (assessment_date)
+CLUSTER BY (assessment_date, h3_cell_8, flood_risk_level)
 TBLPROPERTIES (
   'delta.enableChangeDataFeed' = 'true',
-  'delta.autoOptimize.optimizeWrite' = 'true',
-  'delta.autoOptimize.autoCompact' = 'true'
+  'delta.enablePredictiveOptimization' = 'true'
 )
 COMMENT 'Flood risk assessments by location and date';
 
@@ -281,11 +276,10 @@ CREATE OR REPLACE TABLE combined_risk_assessments (
   processing_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
 )
 USING DELTA
-PARTITIONED BY (assessment_date)
+CLUSTER BY (assessment_date, overall_risk_level, h3_cell_7)
 TBLPROPERTIES (
   'delta.enableChangeDataFeed' = 'true',
-  'delta.autoOptimize.optimizeWrite' = 'true',
-  'delta.autoOptimize.autoCompact' = 'true'
+  'delta.enablePredictiveOptimization' = 'true'
 )
 COMMENT 'Combined climate risk assessments for insurance applications';
 
@@ -325,16 +319,16 @@ GROUP BY h3_cell_7, latitude, longitude
 COMMENT 'Geographic concentration of risk for spatial analysis';
 
 -- Grant permissions (adjust as needed for your organization)
-GRANT USAGE ON CATALOG climate_risk_catalog TO `domain-users`;
-GRANT USAGE ON SCHEMA climate_risk_catalog.raw_data TO `domain-users`;
-GRANT USAGE ON SCHEMA climate_risk_catalog.processed_data TO `domain-users`;
-GRANT USAGE ON SCHEMA climate_risk_catalog.risk_models TO `domain-users`;
-GRANT USAGE ON SCHEMA climate_risk_catalog.analytics TO `domain-users`;
+GRANT USAGE ON CATALOG ${catalog_name} TO `domain-users`;
+GRANT USAGE ON SCHEMA ${catalog_name}.raw_data TO `domain-users`;
+GRANT USAGE ON SCHEMA ${catalog_name}.processed_data TO `domain-users`;
+GRANT USAGE ON SCHEMA ${catalog_name}.risk_models TO `domain-users`;
+GRANT USAGE ON SCHEMA ${catalog_name}.analytics TO `domain-users`;
 
 -- Grant read access to analytics teams
-GRANT SELECT ON SCHEMA climate_risk_catalog.analytics TO `analytics-team`;
+GRANT SELECT ON SCHEMA ${catalog_name}.analytics TO `analytics-team`;
 
 -- Grant write access to data engineering teams
-GRANT ALL PRIVILEGES ON SCHEMA climate_risk_catalog.raw_data TO `data-engineering-team`;
-GRANT ALL PRIVILEGES ON SCHEMA climate_risk_catalog.processed_data TO `data-engineering-team`;
-GRANT ALL PRIVILEGES ON SCHEMA climate_risk_catalog.risk_models TO `data-engineering-team`;
+GRANT ALL PRIVILEGES ON SCHEMA ${catalog_name}.raw_data TO `data-engineering-team`;
+GRANT ALL PRIVILEGES ON SCHEMA ${catalog_name}.processed_data TO `data-engineering-team`;
+GRANT ALL PRIVILEGES ON SCHEMA ${catalog_name}.risk_models TO `data-engineering-team`;
