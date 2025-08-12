@@ -1,15 +1,15 @@
 # Databricks notebook source
 # MAGIC %md
 # MAGIC # Unity Catalog Schema Configuration for Climate Risk Insurance Models
-# MAGIC 
+# MAGIC
 # MAGIC This notebook sets up the complete Unity Catalog schema structure for climate data ingestion and processing.
-# MAGIC 
+# MAGIC
 # MAGIC ## Features
 # MAGIC - Parameterized catalog name for flexibility
 # MAGIC - Databricks Liquid Clustering for optimal performance
 # MAGIC - Predictive optimization enabled
 # MAGIC - Comprehensive schema for climate risk insurance models
-# MAGIC 
+# MAGIC
 # MAGIC ## Prerequisites
 # MAGIC - Unity Catalog enabled workspace
 # MAGIC - Permissions to create catalogs and schemas
@@ -19,7 +19,7 @@
 
 # MAGIC %md
 # MAGIC ## Configuration Parameters
-# MAGIC 
+# MAGIC
 # MAGIC Set the catalog name parameter using Databricks widgets. You can modify this value in the widget UI or programmatically.
 
 # COMMAND ----------
@@ -32,21 +32,21 @@
 
 # MAGIC %md
 # MAGIC ## Catalog and Schema Creation
-# MAGIC 
+# MAGIC
 # MAGIC Creating the main catalog and data domain schemas.
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC -- Create catalog for climate risk data
-# MAGIC CREATE CATALOG IF NOT EXISTS :catalog_name
+# MAGIC CREATE CATALOG IF NOT EXISTS ${catalog_name}
 # MAGIC COMMENT 'Unified catalog for climate risk insurance models and data';
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- Use the catalog
-# MAGIC USE CATALOG :catalog_name;
+# MAGIC -- Use the catalog from the widget
+# MAGIC USE CATALOG ${catalog_name};
 
 # COMMAND ----------
 
@@ -54,13 +54,13 @@
 # MAGIC -- Create schemas for different data domains
 # MAGIC CREATE SCHEMA IF NOT EXISTS raw_data
 # MAGIC COMMENT 'Raw ingested data from external sources (AccuWeather, NOAA, etc.)';
-# MAGIC 
+# MAGIC
 # MAGIC CREATE SCHEMA IF NOT EXISTS processed_data
 # MAGIC COMMENT 'Cleaned and transformed climate data';
-# MAGIC 
+# MAGIC
 # MAGIC CREATE SCHEMA IF NOT EXISTS risk_models
 # MAGIC COMMENT 'Risk assessment models and computed risk scores';
-# MAGIC 
+# MAGIC
 # MAGIC CREATE SCHEMA IF NOT EXISTS analytics
 # MAGIC COMMENT 'Analytical views and aggregated data for reporting';
 
@@ -68,7 +68,7 @@
 
 # MAGIC %md
 # MAGIC ## Raw Data Tables
-# MAGIC 
+# MAGIC
 # MAGIC Setting up tables for ingesting raw climate data from external sources.
 
 # COMMAND ----------
@@ -104,10 +104,10 @@
 # MAGIC   h3_cell_8 STRING GENERATED ALWAYS AS (h3_latlng_to_cell_string(latitude, longitude, 8))
 # MAGIC ) 
 # MAGIC USING DELTA
-# MAGIC CLUSTER BY (DATE(observation_time), location_key)
+# MAGIC CLUSTER BY (observation_time, location_key)
 # MAGIC TBLPROPERTIES (
-# MAGIC   'delta.enableChangeDataFeed' = 'true',
-# MAGIC   'delta.enablePredictiveOptimization' = 'true'
+# MAGIC   'delta.enableChangeDataFeed' = true,
+# MAGIC   'delta.enablePredictiveOptimization' = true
 # MAGIC )
 # MAGIC COMMENT 'Real-time current weather conditions from AccuWeather API';
 
@@ -201,7 +201,7 @@
 
 # MAGIC %md
 # MAGIC ## Processed Data Tables
-# MAGIC 
+# MAGIC
 # MAGIC Creating tables for cleaned and standardized climate data.
 
 # COMMAND ----------
@@ -272,7 +272,7 @@
 
 # MAGIC %md
 # MAGIC ## Risk Assessment Tables
-# MAGIC 
+# MAGIC
 # MAGIC Creating tables for storing risk assessment results and models.
 
 # COMMAND ----------
@@ -384,7 +384,7 @@
 
 # MAGIC %md
 # MAGIC ## Analytics Views
-# MAGIC 
+# MAGIC
 # MAGIC Creating analytical views for reporting and business intelligence.
 
 # COMMAND ----------
@@ -435,9 +435,9 @@
 
 # MAGIC %md
 # MAGIC ## Permissions Setup
-# MAGIC 
+# MAGIC
 # MAGIC Setting up proper permissions for different user groups. 
-# MAGIC 
+# MAGIC
 # MAGIC **Note:** Adjust group names according to your organization's structure.
 
 # COMMAND ----------
@@ -468,7 +468,7 @@
 
 # MAGIC %md
 # MAGIC ## Validation and Summary
-# MAGIC 
+# MAGIC
 # MAGIC Let's validate the setup and provide a summary of created objects.
 
 # COMMAND ----------
@@ -505,38 +505,38 @@
 
 # MAGIC %md
 # MAGIC ## Setup Complete! 🎉
-# MAGIC 
+# MAGIC
 # MAGIC Your Unity Catalog schema for the Climate Risk Insurance Models has been successfully set up with:
-# MAGIC 
+# MAGIC
 # MAGIC ### Catalogs & Schemas
 # MAGIC - **Catalog:** `:catalog_name`
 # MAGIC - **Schemas:** `raw_data`, `processed_data`, `risk_models`, `analytics`
-# MAGIC 
+# MAGIC
 # MAGIC ### Raw Data Tables (4)
 # MAGIC - `accuweather_current_conditions`
 # MAGIC - `accuweather_daily_forecasts`
 # MAGIC - `historical_climate_data`
 # MAGIC - `elevation_data`
-# MAGIC 
+# MAGIC
 # MAGIC ### Processed Data Tables (2)
 # MAGIC - `climate_observations`
 # MAGIC - `climate_aggregations`
-# MAGIC 
+# MAGIC
 # MAGIC ### Risk Assessment Tables (3)
 # MAGIC - `drought_risk_assessments`
 # MAGIC - `flood_risk_assessments`
 # MAGIC - `combined_risk_assessments`
-# MAGIC 
+# MAGIC
 # MAGIC ### Analytics Views (2)
 # MAGIC - `portfolio_risk_summary`
 # MAGIC - `geographic_risk_concentration`
-# MAGIC 
+# MAGIC
 # MAGIC ### Features Enabled
 # MAGIC ✅ **Databricks Liquid Clustering** - Automatic data layout optimization  
 # MAGIC ✅ **Predictive Optimization** - ML-driven performance optimization  
 # MAGIC ✅ **Change Data Feed** - Track data changes over time  
 # MAGIC ✅ **Parameterized Setup** - Easy customization for different environments  
-# MAGIC 
+# MAGIC
 # MAGIC ### Next Steps
 # MAGIC 1. Start ingesting data using the pipeline notebooks
 # MAGIC 2. Run the risk assessment models
