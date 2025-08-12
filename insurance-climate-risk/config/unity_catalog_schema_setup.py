@@ -100,8 +100,8 @@
 # MAGIC   visibility_km DOUBLE,
 # MAGIC   cloud_cover_percent INT,
 # MAGIC   ingestion_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
-# MAGIC   h3_cell_7 STRING GENERATED ALWAYS AS (h3_latlng_to_cell_string(latitude, longitude, 7)),
-# MAGIC   h3_cell_8 STRING GENERATED ALWAYS AS (h3_latlng_to_cell_string(latitude, longitude, 8))
+# MAGIC   h3_cell_7 STRING,
+# MAGIC   h3_cell_8 STRING
 # MAGIC ) 
 # MAGIC USING DELTA
 # MAGIC CLUSTER BY (DATE(observation_time), location_key)
@@ -130,8 +130,8 @@
 # MAGIC   wind_speed_kmh DOUBLE,
 # MAGIC   wind_direction_degrees INT,
 # MAGIC   ingestion_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
-# MAGIC   h3_cell_7 STRING GENERATED ALWAYS AS (h3_latlng_to_cell_string(latitude, longitude, 7)),
-# MAGIC   h3_cell_8 STRING GENERATED ALWAYS AS (h3_latlng_to_cell_string(latitude, longitude, 8))
+# MAGIC   h3_cell_7 STRING,
+# MAGIC   h3_cell_8 STRING
 # MAGIC )
 # MAGIC USING DELTA
 # MAGIC CLUSTER BY (forecast_date, location_key)
@@ -159,8 +159,8 @@
 # MAGIC   soil_moisture_percent DOUBLE,
 # MAGIC   snow_depth_cm DOUBLE,
 # MAGIC   ingestion_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
-# MAGIC   h3_cell_7 STRING GENERATED ALWAYS AS (h3_latlng_to_cell_string(latitude, longitude, 7)),
-# MAGIC   h3_cell_8 STRING GENERATED ALWAYS AS (h3_latlng_to_cell_string(latitude, longitude, 8))
+# MAGIC   h3_cell_7 STRING,
+# MAGIC   h3_cell_8 STRING
 # MAGIC )
 # MAGIC USING DELTA
 # MAGIC CLUSTER BY (source, observation_date, location_id)
@@ -467,6 +467,62 @@
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## H3 Geospatial Index Population
+# MAGIC 
+# MAGIC The tables include H3 cell columns for geospatial indexing. Use the following queries to populate these columns after data ingestion:
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Enable H3 Functions
+# MAGIC 
+# MAGIC First, ensure H3 functions are available in your Databricks workspace. If not available, you can use alternative geospatial indexing.
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC -- Example: Update H3 cells in AccuWeather current conditions table
+# MAGIC -- Use this pattern after inserting data into your tables
+# MAGIC /*
+# MAGIC UPDATE :catalog_name.raw_data.accuweather_current_conditions 
+# MAGIC SET 
+# MAGIC   h3_cell_7 = h3_longlattostring(longitude, latitude, 7),
+# MAGIC   h3_cell_8 = h3_longlattostring(longitude, latitude, 8)
+# MAGIC WHERE h3_cell_7 IS NULL OR h3_cell_8 IS NULL;
+# MAGIC */
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Alternative: Use ST_H3_LONGLATTOSTRING (if available)
+# MAGIC 
+# MAGIC If the above function is not available, try the ST_ prefixed version:
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC -- Alternative H3 function approach
+# MAGIC /*
+# MAGIC UPDATE :catalog_name.raw_data.accuweather_current_conditions 
+# MAGIC SET 
+# MAGIC   h3_cell_7 = ST_H3_LONGLATTOSTRING(longitude, latitude, 7),
+# MAGIC   h3_cell_8 = ST_H3_LONGLATTOSTRING(longitude, latitude, 8)
+# MAGIC WHERE h3_cell_7 IS NULL OR h3_cell_8 IS NULL;
+# MAGIC */
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC **Note:** Apply similar UPDATE statements to all tables with H3 columns:
+# MAGIC - `accuweather_daily_forecasts`
+# MAGIC - `historical_climate_data`
+# MAGIC - `climate_observations`
+# MAGIC - `climate_aggregations`
+# MAGIC - Risk assessment tables
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## Validation and Summary
 # MAGIC 
 # MAGIC Let's validate the setup and provide a summary of created objects.
@@ -536,9 +592,11 @@
 # MAGIC ✅ **Predictive Optimization** - ML-driven performance optimization  
 # MAGIC ✅ **Change Data Feed** - Track data changes over time  
 # MAGIC ✅ **Parameterized Setup** - Easy customization for different environments  
+# MAGIC ✅ **H3 Geospatial Indexing** - Prepared for H3 spatial indexing (populate after data ingestion)
 # MAGIC 
 # MAGIC ### Next Steps
 # MAGIC 1. Start ingesting data using the pipeline notebooks
-# MAGIC 2. Run the risk assessment models
-# MAGIC 3. Create dashboards using the analytics views
-# MAGIC 4. Monitor performance and adjust clustering as needed
+# MAGIC 2. **Populate H3 columns** using the UPDATE statements provided in the H3 section above
+# MAGIC 3. Run the risk assessment models
+# MAGIC 4. Create dashboards using the analytics views
+# MAGIC 5. Monitor performance and adjust clustering as needed
