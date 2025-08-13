@@ -1,15 +1,15 @@
 # Databricks notebook source
 # MAGIC %md
 # MAGIC # Unity Catalog Schema Configuration for Climate Risk Insurance Models
-# MAGIC 
+# MAGIC
 # MAGIC This notebook sets up the complete Unity Catalog schema structure for climate data ingestion and processing.
-# MAGIC 
+# MAGIC
 # MAGIC ## Features
 # MAGIC - Parameterized catalog name for flexibility
 # MAGIC - Databricks Liquid Clustering for optimal performance
 # MAGIC - Predictive optimization enabled
 # MAGIC - Comprehensive schema for climate risk insurance models
-# MAGIC 
+# MAGIC
 # MAGIC ## Prerequisites
 # MAGIC - Unity Catalog enabled workspace
 # MAGIC - Permissions to create catalogs and schemas
@@ -19,37 +19,34 @@
 
 # MAGIC %md
 # MAGIC ## Configuration Parameters
-# MAGIC 
+# MAGIC
 # MAGIC Set the catalog name parameter using Python variables. Modify the value as needed for your environment.
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC # Set parameter values - modify as needed for your environment
-# MAGIC catalog_name = "demo_hc"
-# MAGIC print(f"Using catalog: {catalog_name}")
+# Set parameter values - modify as needed for your environment
+catalog_name = "demo_hc"
+print(f"Using catalog: {catalog_name}")
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## Catalog and Schema Creation
-# MAGIC 
+# MAGIC
 # MAGIC Creating the main catalog and data domain schemas.
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC # Create catalog for climate risk data
-# MAGIC spark.sql(f"""
-# MAGIC CREATE CATALOG IF NOT EXISTS {catalog_name}
-# MAGIC COMMENT 'Unified catalog for climate risk insurance models and data'
-# MAGIC """)
+# Create catalog for climate risk data
+spark.sql(f"""
+CREATE CATALOG IF NOT EXISTS {catalog_name}
+COMMENT 'Unified catalog for climate risk insurance models and data'
+""")
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC # Use the catalog
-# MAGIC spark.sql(f"USE CATALOG {catalog_name}")
+# Use the catalog
+spark.sql(f"USE CATALOG {catalog_name}")
 
 # COMMAND ----------
 
@@ -57,13 +54,13 @@
 # MAGIC -- Create schemas for different data domains
 # MAGIC CREATE SCHEMA IF NOT EXISTS raw_data
 # MAGIC COMMENT 'Raw ingested data from external sources (AccuWeather, NOAA, etc.)';
-# MAGIC 
+# MAGIC
 # MAGIC CREATE SCHEMA IF NOT EXISTS processed_data
 # MAGIC COMMENT 'Cleaned and transformed climate data';
-# MAGIC 
+# MAGIC
 # MAGIC CREATE SCHEMA IF NOT EXISTS risk_models
 # MAGIC COMMENT 'Risk assessment models and computed risk scores';
-# MAGIC 
+# MAGIC
 # MAGIC CREATE SCHEMA IF NOT EXISTS analytics
 # MAGIC COMMENT 'Analytical views and aggregated data for reporting';
 
@@ -71,7 +68,7 @@
 
 # MAGIC %md
 # MAGIC ## Raw Data Tables
-# MAGIC 
+# MAGIC
 # MAGIC Setting up tables for ingesting raw climate data from external sources.
 
 # COMMAND ----------
@@ -83,66 +80,7 @@
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- AccuWeather current conditions table
-# MAGIC CREATE OR REPLACE TABLE accuweather_current_conditions (
-# MAGIC   location_key STRING NOT NULL,
-# MAGIC   location_name STRING,
-# MAGIC   latitude DOUBLE,
-# MAGIC   longitude DOUBLE,
-# MAGIC   observation_time TIMESTAMP,
-# MAGIC   temperature_celsius DOUBLE,
-# MAGIC   temperature_fahrenheit DOUBLE,
-# MAGIC   humidity_percent INT,
-# MAGIC   pressure_mb DOUBLE,
-# MAGIC   wind_speed_kmh DOUBLE,
-# MAGIC   wind_direction_degrees INT,
-# MAGIC   precipitation_mm DOUBLE,
-# MAGIC   weather_text STRING,
-# MAGIC   weather_icon INT,
-# MAGIC   uv_index INT,
-# MAGIC   visibility_km DOUBLE,
-# MAGIC   cloud_cover_percent INT,
-# MAGIC   ingestion_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
-# MAGIC   h3_cell_7 STRING,
-# MAGIC   h3_cell_8 STRING
-# MAGIC ) 
-# MAGIC USING DELTA
-# MAGIC CLUSTER BY (DATE(observation_time), location_key)
-# MAGIC TBLPROPERTIES (
-# MAGIC   'delta.enableChangeDataFeed' = 'true',
-# MAGIC   'delta.enablePredictiveOptimization' = 'true'
-# MAGIC )
-# MAGIC COMMENT 'Real-time current weather conditions from AccuWeather API';
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC -- AccuWeather daily forecasts table
-# MAGIC CREATE OR REPLACE TABLE accuweather_daily_forecasts (
-# MAGIC   location_key STRING NOT NULL,
-# MAGIC   location_name STRING,
-# MAGIC   latitude DOUBLE,
-# MAGIC   longitude DOUBLE,
-# MAGIC   forecast_date DATE,
-# MAGIC   min_temperature_celsius DOUBLE,
-# MAGIC   max_temperature_celsius DOUBLE,
-# MAGIC   precipitation_probability_percent INT,
-# MAGIC   precipitation_amount_mm DOUBLE,
-# MAGIC   weather_text STRING,
-# MAGIC   weather_icon INT,
-# MAGIC   wind_speed_kmh DOUBLE,
-# MAGIC   wind_direction_degrees INT,
-# MAGIC   ingestion_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
-# MAGIC   h3_cell_7 STRING,
-# MAGIC   h3_cell_8 STRING
-# MAGIC )
-# MAGIC USING DELTA
-# MAGIC CLUSTER BY (forecast_date, location_key)
-# MAGIC TBLPROPERTIES (
-# MAGIC   'delta.enableChangeDataFeed' = 'true',
-# MAGIC   'delta.enablePredictiveOptimization' = 'true'
-# MAGIC )
-# MAGIC COMMENT 'Daily weather forecasts from AccuWeather API';
+# MAGIC ALTER SCHEMA raw_data ENABLE PREDICTIVE OPTIMIZATION;
 
 # COMMAND ----------
 
@@ -169,7 +107,7 @@
 # MAGIC CLUSTER BY (source, observation_date, location_id)
 # MAGIC TBLPROPERTIES (
 # MAGIC   'delta.enableChangeDataFeed' = 'true',
-# MAGIC   'delta.enablePredictiveOptimization' = 'true'
+# MAGIC   'delta.feature.allowColumnDefaults' = 'enabled'
 # MAGIC )
 # MAGIC COMMENT 'Historical climate data from various sources (NOAA, ERA5, etc.)';
 
@@ -196,7 +134,7 @@
 # MAGIC USING DELTA
 # MAGIC TBLPROPERTIES (
 # MAGIC   'delta.enableChangeDataFeed' = 'true',
-# MAGIC   'delta.enablePredictiveOptimization' = 'true'
+# MAGIC   'delta.feature.allowColumnDefaults' = 'enabled'
 # MAGIC )
 # MAGIC COMMENT 'Elevation and topographic data for flood risk modeling';
 
@@ -204,7 +142,7 @@
 
 # MAGIC %md
 # MAGIC ## Processed Data Tables
-# MAGIC 
+# MAGIC
 # MAGIC Creating tables for cleaned and standardized climate data.
 
 # COMMAND ----------
@@ -212,6 +150,7 @@
 # MAGIC %sql
 # MAGIC -- Set up processed data schema
 # MAGIC USE SCHEMA processed_data;
+# MAGIC ALTER SCHEMA processed_data ENABLE PREDICTIVE OPTIMIZATION;
 
 # COMMAND ----------
 
@@ -234,10 +173,10 @@
 # MAGIC   processing_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
 # MAGIC )
 # MAGIC USING DELTA
-# MAGIC CLUSTER BY (DATE(observation_timestamp), data_source, h3_cell_7)
+# MAGIC CLUSTER BY (observation_timestamp, data_source, h3_cell_7)
 # MAGIC TBLPROPERTIES (
 # MAGIC   'delta.enableChangeDataFeed' = 'true',
-# MAGIC   'delta.enablePredictiveOptimization' = 'true'
+# MAGIC   'delta.feature.allowColumnDefaults' = 'enabled'
 # MAGIC )
 # MAGIC COMMENT 'Standardized climate observations from all sources';
 
@@ -267,7 +206,7 @@
 # MAGIC CLUSTER BY (aggregation_date, h3_cell_7)
 # MAGIC TBLPROPERTIES (
 # MAGIC   'delta.enableChangeDataFeed' = 'true',
-# MAGIC   'delta.enablePredictiveOptimization' = 'true'
+# MAGIC   'delta.feature.allowColumnDefaults' = 'enabled'
 # MAGIC )
 # MAGIC COMMENT 'Daily aggregated climate data by H3 cell for risk modeling';
 
@@ -275,7 +214,7 @@
 
 # MAGIC %md
 # MAGIC ## Risk Assessment Tables
-# MAGIC 
+# MAGIC
 # MAGIC Creating tables for storing risk assessment results and models.
 
 # COMMAND ----------
@@ -283,6 +222,7 @@
 # MAGIC %sql
 # MAGIC -- Set up risk models schema
 # MAGIC USE SCHEMA risk_models;
+# MAGIC ALTER SCHEMA risk_models ENABLE PREDICTIVE OPTIMIZATION;
 
 # COMMAND ----------
 
@@ -314,7 +254,7 @@
 # MAGIC CLUSTER BY (assessment_date, h3_cell_7, drought_risk_level)
 # MAGIC TBLPROPERTIES (
 # MAGIC   'delta.enableChangeDataFeed' = 'true',
-# MAGIC   'delta.enablePredictiveOptimization' = 'true'
+# MAGIC   'delta.feature.allowColumnDefaults' = 'enabled'
 # MAGIC )
 # MAGIC COMMENT 'Drought risk assessments by location and date';
 
@@ -347,7 +287,7 @@
 # MAGIC CLUSTER BY (assessment_date, h3_cell_8, flood_risk_level)
 # MAGIC TBLPROPERTIES (
 # MAGIC   'delta.enableChangeDataFeed' = 'true',
-# MAGIC   'delta.enablePredictiveOptimization' = 'true'
+# MAGIC   'delta.feature.allowColumnDefaults' = 'enabled'
 # MAGIC )
 # MAGIC COMMENT 'Flood risk assessments by location and date';
 
@@ -379,7 +319,7 @@
 # MAGIC CLUSTER BY (assessment_date, overall_risk_level, h3_cell_7)
 # MAGIC TBLPROPERTIES (
 # MAGIC   'delta.enableChangeDataFeed' = 'true',
-# MAGIC   'delta.enablePredictiveOptimization' = 'true'
+# MAGIC   'delta.feature.allowColumnDefaults' = 'enabled'
 # MAGIC )
 # MAGIC COMMENT 'Combined climate risk assessments for insurance applications';
 
@@ -387,7 +327,7 @@
 
 # MAGIC %md
 # MAGIC ## Analytics Views
-# MAGIC 
+# MAGIC
 # MAGIC Creating analytical views for reporting and business intelligence.
 
 # COMMAND ----------
@@ -395,12 +335,16 @@
 # MAGIC %sql
 # MAGIC -- Set up analytics schema
 # MAGIC USE SCHEMA analytics;
+# MAGIC ALTER SCHEMA analytics ENABLE PREDICTIVE OPTIMIZATION;
+# MAGIC
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC -- Portfolio risk summary view
-# MAGIC CREATE OR REPLACE VIEW portfolio_risk_summary AS
+# MAGIC CREATE OR REPLACE VIEW portfolio_risk_summary 
+# MAGIC COMMENT 'Portfolio-level risk summary for executive reporting' 
+# MAGIC AS
 # MAGIC SELECT 
 # MAGIC   assessment_date,
 # MAGIC   COUNT(*) as total_locations,
@@ -412,14 +356,15 @@
 # MAGIC   SUM(CASE WHEN primary_risk_factor = 'drought' THEN 1 ELSE 0 END) as drought_primary_locations,
 # MAGIC   SUM(CASE WHEN primary_risk_factor = 'flood' THEN 1 ELSE 0 END) as flood_primary_locations
 # MAGIC FROM risk_models.combined_risk_assessments
-# MAGIC GROUP BY assessment_date
-# MAGIC COMMENT 'Portfolio-level risk summary for executive reporting';
+# MAGIC GROUP BY assessment_date;
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC -- Geographic risk concentration view
-# MAGIC CREATE OR REPLACE VIEW geographic_risk_concentration AS
+# MAGIC CREATE OR REPLACE VIEW geographic_risk_concentration 
+# MAGIC COMMENT 'Geographic concentration of risk for spatial analysis'
+# MAGIC AS
 # MAGIC SELECT 
 # MAGIC   h3_cell_7,
 # MAGIC   latitude,
@@ -431,76 +376,72 @@
 # MAGIC   AVG(combined_premium_multiplier) as avg_premium_multiplier
 # MAGIC FROM risk_models.combined_risk_assessments
 # MAGIC WHERE assessment_date >= CURRENT_DATE() - INTERVAL 90 DAYS
-# MAGIC GROUP BY h3_cell_7, latitude, longitude
-# MAGIC COMMENT 'Geographic concentration of risk for spatial analysis';
+# MAGIC GROUP BY h3_cell_7, latitude, longitude;
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## Permissions Setup
-# MAGIC 
+# MAGIC
 # MAGIC Setting up proper permissions for different user groups. 
-# MAGIC 
+# MAGIC
 # MAGIC **Note:** Adjust group names according to your organization's structure.
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC # Grant permissions (adjust as needed for your organization)
-# MAGIC grant_statements = [
-# MAGIC     f"GRANT USAGE ON CATALOG {catalog_name} TO `domain-users`",
-# MAGIC     f"GRANT USAGE ON SCHEMA {catalog_name}.raw_data TO `domain-users`",
-# MAGIC     f"GRANT USAGE ON SCHEMA {catalog_name}.processed_data TO `domain-users`",
-# MAGIC     f"GRANT USAGE ON SCHEMA {catalog_name}.risk_models TO `domain-users`",
-# MAGIC     f"GRANT USAGE ON SCHEMA {catalog_name}.analytics TO `domain-users`"
-# MAGIC ]
-# MAGIC 
-# MAGIC for stmt in grant_statements:
-# MAGIC     try:
-# MAGIC         spark.sql(stmt)
-# MAGIC         print(f"✅ {stmt}")
-# MAGIC     except Exception as e:
-# MAGIC         print(f"⚠️ {stmt} - {str(e)}")
+# Grant permissions (adjust as needed for your organization)
+grant_statements = [
+    f"GRANT USAGE ON CATALOG {catalog_name} TO `domain-users`",
+    f"GRANT USAGE ON SCHEMA {catalog_name}.raw_data TO `domain-users`",
+    f"GRANT USAGE ON SCHEMA {catalog_name}.processed_data TO `domain-users`",
+    f"GRANT USAGE ON SCHEMA {catalog_name}.risk_models TO `domain-users`",
+    f"GRANT USAGE ON SCHEMA {catalog_name}.analytics TO `domain-users`"
+]
+
+for stmt in grant_statements:
+    try:
+        spark.sql(stmt)
+        print(f"✅ {stmt}")
+    except Exception as e:
+        print(f"⚠️ {stmt} - {str(e)}")
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC # Grant read access to analytics teams
-# MAGIC try:
-# MAGIC     spark.sql(f"GRANT SELECT ON SCHEMA {catalog_name}.analytics TO `analytics-team`")
-# MAGIC     print(f"✅ Granted SELECT on {catalog_name}.analytics to analytics-team")
-# MAGIC except Exception as e:
-# MAGIC     print(f"⚠️ Grant SELECT failed: {str(e)}")
+# Grant read access to analytics teams
+try:
+    spark.sql(f"GRANT SELECT ON SCHEMA {catalog_name}.analytics TO `analytics-team`")
+    print(f"✅ Granted SELECT on {catalog_name}.analytics to analytics-team")
+except Exception as e:
+    print(f"⚠️ Grant SELECT failed: {str(e)}")
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC # Grant write access to data engineering teams
-# MAGIC engineering_grants = [
-# MAGIC     f"GRANT ALL PRIVILEGES ON SCHEMA {catalog_name}.raw_data TO `data-engineering-team`",
-# MAGIC     f"GRANT ALL PRIVILEGES ON SCHEMA {catalog_name}.processed_data TO `data-engineering-team`",
-# MAGIC     f"GRANT ALL PRIVILEGES ON SCHEMA {catalog_name}.risk_models TO `data-engineering-team`"
-# MAGIC ]
-# MAGIC 
-# MAGIC for stmt in engineering_grants:
-# MAGIC     try:
-# MAGIC         spark.sql(stmt)
-# MAGIC         print(f"✅ {stmt}")
-# MAGIC     except Exception as e:
-# MAGIC         print(f"⚠️ {stmt} - {str(e)}")
+# Grant write access to data engineering teams
+engineering_grants = [
+    f"GRANT ALL PRIVILEGES ON SCHEMA {catalog_name}.raw_data TO `data-engineering-team`",
+    f"GRANT ALL PRIVILEGES ON SCHEMA {catalog_name}.processed_data TO `data-engineering-team`",
+    f"GRANT ALL PRIVILEGES ON SCHEMA {catalog_name}.risk_models TO `data-engineering-team`"
+]
+
+for stmt in engineering_grants:
+    try:
+        spark.sql(stmt)
+        print(f"✅ {stmt}")
+    except Exception as e:
+        print(f"⚠️ {stmt} - {str(e)}")
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## H3 Geospatial Index Population
-# MAGIC 
+# MAGIC
 # MAGIC The tables include H3 cell columns for geospatial indexing. Use the following queries to populate these columns after data ingestion:
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ### Enable H3 Functions
-# MAGIC 
+# MAGIC
 # MAGIC First, ensure H3 functions are available in your Databricks workspace. If not available, you can use alternative geospatial indexing.
 
 # COMMAND ----------
@@ -520,7 +461,7 @@
 
 # MAGIC %md
 # MAGIC ### Alternative: Use ST_H3_LONGLATTOSTRING (if available)
-# MAGIC 
+# MAGIC
 # MAGIC If the above function is not available, try the ST_ prefixed version:
 
 # COMMAND ----------
@@ -549,76 +490,71 @@
 
 # MAGIC %md
 # MAGIC ## Validation and Summary
-# MAGIC 
+# MAGIC
 # MAGIC Let's validate the setup and provide a summary of created objects.
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC # Show created schemas
-# MAGIC display(spark.sql(f"SHOW SCHEMAS IN {catalog_name}"))
+# Show created schemas
+display(spark.sql(f"SHOW SCHEMAS IN {catalog_name}"))
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC # Show tables in raw_data schema
-# MAGIC display(spark.sql(f"SHOW TABLES IN {catalog_name}.raw_data"))
+# Show tables in raw_data schema
+display(spark.sql(f"SHOW TABLES IN {catalog_name}.raw_data"))
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC # Show tables in processed_data schema
-# MAGIC display(spark.sql(f"SHOW TABLES IN {catalog_name}.processed_data"))
+# Show tables in processed_data schema
+display(spark.sql(f"SHOW TABLES IN {catalog_name}.processed_data"))
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC # Show tables in risk_models schema
-# MAGIC display(spark.sql(f"SHOW TABLES IN {catalog_name}.risk_models"))
+# Show tables in risk_models schema
+display(spark.sql(f"SHOW TABLES IN {catalog_name}.risk_models"))
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC # Show views in analytics schema
-# MAGIC display(spark.sql(f"SHOW TABLES IN {catalog_name}.analytics"))
+# Show views in analytics schema
+display(spark.sql(f"SHOW TABLES IN {catalog_name}.analytics"))
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## Setup Complete! 🎉
-# MAGIC 
+# MAGIC
 # MAGIC Your Unity Catalog schema for the Climate Risk Insurance Models has been successfully set up with:
-# MAGIC 
+# MAGIC
 # MAGIC ### Catalogs & Schemas
 # MAGIC - **Catalog:** Parameterized (configurable)
 # MAGIC - **Schemas:** `raw_data`, `processed_data`, `risk_models`, `analytics`
-# MAGIC 
+# MAGIC
 # MAGIC ### Raw Data Tables (4)
 # MAGIC - `accuweather_current_conditions`
 # MAGIC - `accuweather_daily_forecasts`
 # MAGIC - `historical_climate_data`
 # MAGIC - `elevation_data`
-# MAGIC 
+# MAGIC
 # MAGIC ### Processed Data Tables (2)
 # MAGIC - `climate_observations`
 # MAGIC - `climate_aggregations`
-# MAGIC 
+# MAGIC
 # MAGIC ### Risk Assessment Tables (3)
 # MAGIC - `drought_risk_assessments`
 # MAGIC - `flood_risk_assessments`
 # MAGIC - `combined_risk_assessments`
-# MAGIC 
+# MAGIC
 # MAGIC ### Analytics Views (2)
 # MAGIC - `portfolio_risk_summary`
 # MAGIC - `geographic_risk_concentration`
-# MAGIC 
+# MAGIC
 # MAGIC ### Features Enabled
 # MAGIC ✅ **Databricks Liquid Clustering** - Automatic data layout optimization  
 # MAGIC ✅ **Predictive Optimization** - ML-driven performance optimization  
 # MAGIC ✅ **Change Data Feed** - Track data changes over time  
 # MAGIC ✅ **Parameterized Setup** - Easy customization for different environments  
 # MAGIC ✅ **H3 Geospatial Indexing** - Prepared for H3 spatial indexing (populate after data ingestion)
-# MAGIC 
+# MAGIC
 # MAGIC ### Next Steps
 # MAGIC 1. Start ingesting data using the pipeline notebooks
 # MAGIC 2. **Populate H3 columns** using the UPDATE statements provided in the H3 section above

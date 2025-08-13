@@ -1,9 +1,9 @@
 # Databricks notebook source
 # MAGIC %md
 # MAGIC # Climate Risk Insurance Models - Demo Walkthrough
-# MAGIC 
+# MAGIC
 # MAGIC This notebook demonstrates the complete workflow for the Climate Risk Insurance Models using the Unity Catalog schema.
-# MAGIC 
+# MAGIC
 # MAGIC ## Demo Overview
 # MAGIC 1. **Setup & Configuration** - Connect to catalog and validate schema
 # MAGIC 2. **Sample Data Ingestion** - Load sample climate data
@@ -11,7 +11,7 @@
 # MAGIC 4. **H3 Geospatial Indexing** - Add spatial indexing
 # MAGIC 5. **Risk Assessment** - Calculate drought and flood risks
 # MAGIC 6. **Analytics & Visualization** - Generate insights and reports
-# MAGIC 
+# MAGIC
 # MAGIC ## Prerequisites
 # MAGIC - Unity Catalog schema created (run `unity_catalog_schema_setup.py` first)
 # MAGIC - Appropriate permissions on the catalog
@@ -24,180 +24,187 @@
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC # Set up demo parameters - modify as needed
-# MAGIC catalog_name = "demo_hc"
-# MAGIC demo_location = "San Francisco, CA"
-# MAGIC demo_latitude = "37.7749"
-# MAGIC demo_longitude = "-122.4194"
-# MAGIC 
-# MAGIC print(f"Demo Configuration:")
-# MAGIC print(f"Catalog: {catalog_name}")
-# MAGIC print(f"Location: {demo_location}")
-# MAGIC print(f"Coordinates: {demo_latitude}, {demo_longitude}")
+# Set up demo parameters - modify as needed
+catalog_name = "demo_hc"
+demo_location = "San Francisco, CA"
+demo_latitude = "37.7749"
+demo_longitude = "-122.4194"
+
+print(f"Demo Configuration:")
+print(f"Catalog: {catalog_name}")
+print(f"Location: {demo_location}")
+print(f"Coordinates: {demo_latitude}, {demo_longitude}")
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC # Verify catalog and schemas exist
-# MAGIC display(spark.sql(f"SHOW SCHEMAS IN {catalog_name}"))
+from databricks.sdk import WorkspaceClient
+
+w = WorkspaceClient()
+
+# Create secret scope
+w.secrets.create_scope(scope="climate-risk")
+
+# Add AccuWeather API key
+w.secrets.put_secret(scope="climate-risk", key="accuweather-api-key", string_value="FNjYVUd3pZZ9aAyqGTTGxpsTAXxfloiP")
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC # Check if tables are created
-# MAGIC spark.sql(f"USE CATALOG {catalog_name}")
-# MAGIC display(spark.sql("SHOW TABLES IN raw_data"))
+dbutils.notebook.run("/Workspace/Users/houssem.chihoub@databricks.com/climate-risk/insurance-climate-risk/config/unity_catalog_schema_setup", 0)
+
+# COMMAND ----------
+
+# Verify catalog and schemas exist
+display(spark.sql(f"SHOW SCHEMAS IN {catalog_name}"))
+
+# COMMAND ----------
+
+# Check if tables are created
+spark.sql(f"USE CATALOG {catalog_name}")
+display(spark.sql("SHOW TABLES IN raw_data"))
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## 2. Sample Data Ingestion
-# MAGIC 
+# MAGIC
 # MAGIC Let's create some sample climate data to demonstrate the workflow.
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC # Insert sample AccuWeather current conditions data
-# MAGIC spark.sql(f"USE SCHEMA {catalog_name}.raw_data")
-# MAGIC 
-# MAGIC # Execute the INSERT statement
-# MAGIC spark.sql(f"""
-# MAGIC INSERT INTO accuweather_current_conditions 
-# MAGIC (location_key, location_name, latitude, longitude, observation_time, 
-# MAGIC  temperature_celsius, temperature_fahrenheit, humidity_percent, pressure_mb,
-# MAGIC  wind_speed_kmh, wind_direction_degrees, precipitation_mm, weather_text, 
-# MAGIC  weather_icon, uv_index, visibility_km, cloud_cover_percent)
-# MAGIC VALUES 
-# MAGIC   ('SF001', '{demo_location}', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
-# MAGIC    current_timestamp(), 18.5, 65.3, 75, 1013.2, 15.0, 225, 0.0, 'Partly Cloudy', 3, 6, 16.0, 40),
-# MAGIC   ('SF002', 'Oakland, CA', 37.8044, -122.2711, 
-# MAGIC    current_timestamp(), 19.2, 66.6, 72, 1012.8, 12.0, 210, 0.0, 'Clear', 1, 7, 20.0, 20),
-# MAGIC   ('SF003', 'San Jose, CA', 37.3382, -121.8863, 
-# MAGIC    current_timestamp(), 21.1, 70.0, 68, 1014.1, 8.0, 180, 0.0, 'Sunny', 1, 8, 25.0, 10)
-# MAGIC """)
-# MAGIC 
-# MAGIC print("✅ Sample AccuWeather current conditions data inserted")
+# Insert sample AccuWeather current conditions data
+spark.sql("USE raw_data")
+
+# Execute the INSERT statement
+spark.sql(f"""
+INSERT INTO accuweather_current_conditions 
+(location_key, location_name, latitude, longitude, observation_time, 
+ temperature_celsius, temperature_fahrenheit, humidity_percent, pressure_mb,
+ wind_speed_kmh, wind_direction_degrees, precipitation_mm, weather_text, 
+ weather_icon, uv_index, visibility_km, cloud_cover_percent)
+VALUES 
+  ('SF001', '{demo_location}', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
+   current_timestamp(), 18.5, 65.3, 75, 1013.2, 15.0, 225, 0.0, 'Partly Cloudy', 3, 6, 16.0, 40),
+  ('SF002', 'Oakland, CA', 37.8044, -122.2711, 
+   current_timestamp(), 19.2, 66.6, 72, 1012.8, 12.0, 210, 0.0, 'Clear', 1, 7, 20.0, 20),
+  ('SF003', 'San Jose, CA', 37.3382, -121.8863, 
+   current_timestamp(), 21.1, 70.0, 68, 1014.1, 8.0, 180, 0.0, 'Sunny', 1, 8, 25.0, 10)
+""")
+
+print("✅ Sample AccuWeather current conditions data inserted")
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC # Insert sample daily forecast data
-# MAGIC spark.sql(f"""
-# MAGIC INSERT INTO accuweather_daily_forecasts 
-# MAGIC (location_key, location_name, latitude, longitude, forecast_date,
-# MAGIC  min_temperature_celsius, max_temperature_celsius, precipitation_probability_percent,
-# MAGIC  precipitation_amount_mm, weather_text, weather_icon, wind_speed_kmh, wind_direction_degrees)
-# MAGIC VALUES 
-# MAGIC   ('SF001', '{demo_location}', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
-# MAGIC    current_date(), 15.0, 22.0, 10, 0.0, 'Partly Cloudy', 3, 18.0, 240),
-# MAGIC   ('SF001', '{demo_location}', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
-# MAGIC    current_date() + 1, 16.0, 24.0, 5, 0.0, 'Sunny', 1, 15.0, 220),
-# MAGIC   ('SF001', '{demo_location}', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
-# MAGIC    current_date() + 2, 14.0, 20.0, 30, 2.5, 'Light Rain', 12, 20.0, 190)
-# MAGIC """)
-# MAGIC 
-# MAGIC print("✅ Sample daily forecast data inserted")
+# Insert sample daily forecast data
+spark.sql(f"""
+INSERT INTO accuweather_daily_forecasts 
+(location_key, location_name, latitude, longitude, forecast_date,
+ min_temperature_celsius, max_temperature_celsius, precipitation_probability_percent,
+ precipitation_amount_mm, weather_text, weather_icon, wind_speed_kmh, wind_direction_degrees)
+VALUES 
+  ('SF001', '{demo_location}', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
+   current_date(), 15.0, 22.0, 10, 0.0, 'Partly Cloudy', 3, 18.0, 240),
+  ('SF001', '{demo_location}', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
+   current_date() + 1, 16.0, 24.0, 5, 0.0, 'Sunny', 1, 15.0, 220),
+  ('SF001', '{demo_location}', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
+   current_date() + 2, 14.0, 20.0, 30, 2.5, 'Light Rain', 12, 20.0, 190)
+""")
+
+print("✅ Sample daily forecast data inserted")
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC # Insert sample historical climate data
-# MAGIC spark.sql(f"""
-# MAGIC INSERT INTO historical_climate_data 
-# MAGIC (source, location_id, latitude, longitude, observation_date,
-# MAGIC  temperature_celsius, precipitation_mm, humidity_percent, wind_speed_kmh, pressure_mb,
-# MAGIC  soil_moisture_percent, snow_depth_cm)
-# MAGIC VALUES 
-# MAGIC   ('NOAA', 'SF_STATION_1', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
-# MAGIC    current_date() - 30, 17.8, 0.0, 70, 12.0, 1012.5, 25.0, 0.0),
-# MAGIC   ('NOAA', 'SF_STATION_1', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
-# MAGIC    current_date() - 29, 19.2, 1.2, 72, 15.0, 1010.8, 22.0, 0.0),
-# MAGIC   ('ERA5', 'SF_GRID_1', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
-# MAGIC    current_date() - 28, 16.5, 0.0, 68, 18.0, 1015.2, 28.0, 0.0)
-# MAGIC """)
-# MAGIC 
-# MAGIC print("✅ Sample historical climate data inserted")
+# Insert sample historical climate data
+spark.sql(f"""
+INSERT INTO historical_climate_data 
+(source, location_id, latitude, longitude, observation_date,
+ temperature_celsius, precipitation_mm, humidity_percent, wind_speed_kmh, pressure_mb,
+ soil_moisture_percent, snow_depth_cm)
+VALUES 
+  ('NOAA', 'SF_STATION_1', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
+   current_date() - 30, 17.8, 0.0, 70, 12.0, 1012.5, 25.0, 0.0),
+  ('NOAA', 'SF_STATION_1', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
+   current_date() - 29, 19.2, 1.2, 72, 15.0, 1010.8, 22.0, 0.0),
+  ('ERA5', 'SF_GRID_1', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
+   current_date() - 28, 16.5, 0.0, 68, 18.0, 1015.2, 28.0, 0.0)
+""")
+
+print("✅ Sample historical climate data inserted")
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC # Insert sample elevation data
-# MAGIC spark.sql(f"""
-# MAGIC INSERT INTO elevation_data 
-# MAGIC (h3_cell_8, latitude, longitude, elevation_m, slope_degrees, aspect_degrees,
-# MAGIC  curvature, drainage_area_km2, distance_to_water_m, land_cover_type, soil_type,
-# MAGIC  in_floodplain, data_source)
-# MAGIC VALUES 
-# MAGIC   ('8828308281fffff', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
-# MAGIC    52.0, 5.2, 225.0, -0.1, 150.5, 800.0, 'Urban', 'Clay Loam', false, 'USGS'),
-# MAGIC   ('8828308283fffff', 37.8044, -122.2711, 
-# MAGIC    15.0, 2.8, 180.0, 0.0, 200.2, 500.0, 'Urban', 'Sandy Loam', false, 'USGS'),
-# MAGIC   ('8828308285fffff', 37.3382, -121.8863, 
-# MAGIC    25.0, 3.5, 195.0, 0.1, 180.8, 1200.0, 'Suburban', 'Loam', false, 'USGS')
-# MAGIC """)
-# MAGIC 
-# MAGIC print("✅ Sample elevation data inserted")
+# Insert sample elevation data
+spark.sql(f"""
+INSERT INTO elevation_data 
+(h3_cell_8, latitude, longitude, elevation_m, slope_degrees, aspect_degrees,
+ curvature, drainage_area_km2, distance_to_water_m, land_cover_type, soil_type,
+ in_floodplain, data_source)
+VALUES 
+  ('8828308281fffff', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
+   52.0, 5.2, 225.0, -0.1, 150.5, 800.0, 'Urban', 'Clay Loam', false, 'USGS'),
+  ('8828308283fffff', 37.8044, -122.2711, 
+   15.0, 2.8, 180.0, 0.0, 200.2, 500.0, 'Urban', 'Sandy Loam', false, 'USGS'),
+  ('8828308285fffff', 37.3382, -121.8863, 
+   25.0, 3.5, 195.0, 0.1, 180.8, 1200.0, 'Suburban', 'Loam', false, 'USGS')
+""")
+
+print("✅ Sample elevation data inserted")
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## 3. Data Processing & Standardization
-# MAGIC 
+# MAGIC
 # MAGIC Process raw data into standardized format for risk modeling.
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC # Process data into standardized climate observations
-# MAGIC spark.sql(f"USE SCHEMA {catalog_name}.processed_data")
-# MAGIC 
-# MAGIC INSERT INTO climate_observations 
-# MAGIC (h3_cell_7, h3_cell_8, latitude, longitude, observation_timestamp,
-# MAGIC  temperature_celsius, precipitation_mm, humidity_percent, wind_speed_kmh,
-# MAGIC  pressure_mb, weather_conditions, data_source, data_quality_score)
-# MAGIC SELECT 
-# MAGIC   '', -- Will populate H3 cells in next step
-# MAGIC   '',
-# MAGIC   latitude,
-# MAGIC   longitude,
-# MAGIC   observation_time,
-# MAGIC   temperature_celsius,
-# MAGIC   precipitation_mm,
-# MAGIC   humidity_percent,
-# MAGIC   wind_speed_kmh,
-# MAGIC   pressure_mb,
-# MAGIC   weather_text,
-# MAGIC   'AccuWeather' as data_source,
-# MAGIC   0.95 as data_quality_score
-# MAGIC FROM {catalog_name}.raw_data.accuweather_current_conditions;
+# Process data into standardized climate observations
+spark.sql(f"USE SCHEMA {catalog_name}.processed_data")
+
+INSERT INTO climate_observations 
+(h3_cell_7, h3_cell_8, latitude, longitude, observation_timestamp,
+ temperature_celsius, precipitation_mm, humidity_percent, wind_speed_kmh,
+ pressure_mb, weather_conditions, data_source, data_quality_score)
+SELECT 
+  '', -- Will populate H3 cells in next step
+  '',
+  latitude,
+  longitude,
+  observation_time,
+  temperature_celsius,
+  precipitation_mm,
+  humidity_percent,
+  wind_speed_kmh,
+  pressure_mb,
+  weather_text,
+  'AccuWeather' as data_source,
+  0.95 as data_quality_score
+FROM {catalog_name}.raw_data.accuweather_current_conditions;
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## 4. H3 Geospatial Indexing
-# MAGIC 
+# MAGIC
 # MAGIC Add H3 spatial indexing to enable efficient geospatial queries.
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC # Check if H3 functions are available and demonstrate H3 indexing
-# MAGIC try:
-# MAGIC     # Test H3 function availability
-# MAGIC     spark.sql("SELECT h3_longlattostring(-122.4194, 37.7749, 7) as h3_test").show()
-# MAGIC     h3_function = "h3_longlattostring"
-# MAGIC     print("✅ H3 function h3_longlattostring is available")
-# MAGIC except Exception as e:
-# MAGIC     try:
-# MAGIC         # Try alternative H3 function
-# MAGIC         spark.sql("SELECT ST_H3_LONGLATTOSTRING(-122.4194, 37.7749, 7) as h3_test").show()
-# MAGIC         h3_function = "ST_H3_LONGLATTOSTRING"
-# MAGIC         print("✅ H3 function ST_H3_LONGLATTOSTRING is available")
-# MAGIC     except Exception as e2:
-# MAGIC         print("⚠️ H3 functions not available. Using placeholder values.")
-# MAGIC         h3_function = None
+# Check if H3 functions are available and demonstrate H3 indexing
+try:
+    # Test H3 function availability
+    spark.sql("SELECT h3_longlattostring(-122.4194, 37.7749, 7) as h3_test").show()
+    h3_function = "h3_longlattostring"
+    print("✅ H3 function h3_longlattostring is available")
+except Exception as e:
+    try:
+        # Try alternative H3 function
+        spark.sql("SELECT ST_H3_LONGLATTOSTRING(-122.4194, 37.7749, 7) as h3_test").show()
+        h3_function = "ST_H3_LONGLATTOSTRING"
+        print("✅ H3 function ST_H3_LONGLATTOSTRING is available")
+    except Exception as e2:
+        print("⚠️ H3 functions not available. Using placeholder values.")
+        h3_function = None
 
 # COMMAND ----------
 
@@ -250,7 +257,7 @@
 
 # MAGIC %md
 # MAGIC ## 5. Risk Assessment Models
-# MAGIC 
+# MAGIC
 # MAGIC Calculate drought and flood risk scores based on climate data.
 
 # COMMAND ----------
@@ -258,7 +265,7 @@
 # MAGIC %sql
 # MAGIC -- Calculate drought risk assessments
 # MAGIC USE SCHEMA {catalog_name}.risk_models;
-# MAGIC 
+# MAGIC
 # MAGIC INSERT INTO drought_risk_assessments 
 # MAGIC (h3_cell_7, latitude, longitude, assessment_date,
 # MAGIC  drought_risk_score, drought_risk_level, precipitation_deficit_ratio,
@@ -436,7 +443,7 @@
 
 # MAGIC %md
 # MAGIC ## 6. Analytics & Visualization
-# MAGIC 
+# MAGIC
 # MAGIC Generate insights and reports using the analytics views.
 
 # COMMAND ----------
@@ -469,67 +476,65 @@
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC # Create visualizations using Python
-# MAGIC import matplotlib.pyplot as plt
-# MAGIC import seaborn as sns
-# MAGIC import pandas as pd
-# MAGIC 
-# MAGIC # Get risk assessment data
-# MAGIC risk_data = spark.sql(f"""
-# MAGIC   SELECT 
-# MAGIC     latitude,
-# MAGIC     longitude,
-# MAGIC     combined_risk_score,
-# MAGIC     overall_risk_level,
-# MAGIC     primary_risk_factor,
-# MAGIC     combined_premium_multiplier
-# MAGIC   FROM {dbutils.widgets.get('catalog_name')}.risk_models.combined_risk_assessments
-# MAGIC """).toPandas()
-# MAGIC 
-# MAGIC display(risk_data)
+# Create visualizations using Python
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+
+# Get risk assessment data
+risk_data = spark.sql(f"""
+  SELECT 
+    latitude,
+    longitude,
+    combined_risk_score,
+    overall_risk_level,
+    primary_risk_factor,
+    combined_premium_multiplier
+  FROM {dbutils.widgets.get('catalog_name')}.risk_models.combined_risk_assessments
+""").toPandas()
+
+display(risk_data)
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC # Risk Score Distribution
-# MAGIC plt.figure(figsize=(12, 8))
-# MAGIC 
-# MAGIC # Subplot 1: Risk Score Distribution
-# MAGIC plt.subplot(2, 2, 1)
-# MAGIC plt.hist(risk_data['combined_risk_score'], bins=20, alpha=0.7, color='skyblue', edgecolor='black')
-# MAGIC plt.title('Distribution of Combined Risk Scores')
-# MAGIC plt.xlabel('Risk Score')
-# MAGIC plt.ylabel('Frequency')
-# MAGIC plt.grid(True, alpha=0.3)
-# MAGIC 
-# MAGIC # Subplot 2: Risk Level Counts
-# MAGIC plt.subplot(2, 2, 2)
-# MAGIC risk_level_counts = risk_data['overall_risk_level'].value_counts()
-# MAGIC plt.pie(risk_level_counts.values, labels=risk_level_counts.index, autopct='%1.1f%%', startangle=90)
-# MAGIC plt.title('Risk Level Distribution')
-# MAGIC 
-# MAGIC # Subplot 3: Primary Risk Factor
-# MAGIC plt.subplot(2, 2, 3)
-# MAGIC primary_risk_counts = risk_data['primary_risk_factor'].value_counts()
-# MAGIC plt.bar(primary_risk_counts.index, primary_risk_counts.values, color=['orange', 'blue'], alpha=0.7)
-# MAGIC plt.title('Primary Risk Factors')
-# MAGIC plt.xlabel('Risk Factor')
-# MAGIC plt.ylabel('Count')
-# MAGIC plt.grid(True, alpha=0.3)
-# MAGIC 
-# MAGIC # Subplot 4: Premium Multiplier vs Risk Score
-# MAGIC plt.subplot(2, 2, 4)
-# MAGIC plt.scatter(risk_data['combined_risk_score'], risk_data['combined_premium_multiplier'], 
-# MAGIC             alpha=0.7, c=risk_data['combined_risk_score'], cmap='Reds')
-# MAGIC plt.title('Premium Multiplier vs Risk Score')
-# MAGIC plt.xlabel('Combined Risk Score')
-# MAGIC plt.ylabel('Premium Multiplier')
-# MAGIC plt.colorbar(label='Risk Score')
-# MAGIC plt.grid(True, alpha=0.3)
-# MAGIC 
-# MAGIC plt.tight_layout()
-# MAGIC plt.show()
+# Risk Score Distribution
+plt.figure(figsize=(12, 8))
+
+# Subplot 1: Risk Score Distribution
+plt.subplot(2, 2, 1)
+plt.hist(risk_data['combined_risk_score'], bins=20, alpha=0.7, color='skyblue', edgecolor='black')
+plt.title('Distribution of Combined Risk Scores')
+plt.xlabel('Risk Score')
+plt.ylabel('Frequency')
+plt.grid(True, alpha=0.3)
+
+# Subplot 2: Risk Level Counts
+plt.subplot(2, 2, 2)
+risk_level_counts = risk_data['overall_risk_level'].value_counts()
+plt.pie(risk_level_counts.values, labels=risk_level_counts.index, autopct='%1.1f%%', startangle=90)
+plt.title('Risk Level Distribution')
+
+# Subplot 3: Primary Risk Factor
+plt.subplot(2, 2, 3)
+primary_risk_counts = risk_data['primary_risk_factor'].value_counts()
+plt.bar(primary_risk_counts.index, primary_risk_counts.values, color=['orange', 'blue'], alpha=0.7)
+plt.title('Primary Risk Factors')
+plt.xlabel('Risk Factor')
+plt.ylabel('Count')
+plt.grid(True, alpha=0.3)
+
+# Subplot 4: Premium Multiplier vs Risk Score
+plt.subplot(2, 2, 4)
+plt.scatter(risk_data['combined_risk_score'], risk_data['combined_premium_multiplier'], 
+            alpha=0.7, c=risk_data['combined_risk_score'], cmap='Reds')
+plt.title('Premium Multiplier vs Risk Score')
+plt.xlabel('Combined Risk Score')
+plt.ylabel('Premium Multiplier')
+plt.colorbar(label='Risk Score')
+plt.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
 
 # COMMAND ----------
 
@@ -566,7 +571,7 @@
 
 # MAGIC %md
 # MAGIC ## 7. Data Quality & Validation
-# MAGIC 
+# MAGIC
 # MAGIC Perform data quality checks and validation.
 
 # COMMAND ----------
@@ -582,9 +587,9 @@
 # MAGIC   MIN(observation_time) as earliest_record,
 # MAGIC   MAX(observation_time) as latest_record
 # MAGIC FROM {catalog_name}.raw_data.accuweather_current_conditions
-# MAGIC 
+# MAGIC
 # MAGIC UNION ALL
-# MAGIC 
+# MAGIC
 # MAGIC SELECT 
 # MAGIC   'Processed Data' as data_layer,
 # MAGIC   'Climate Observations' as table_name,
@@ -594,9 +599,9 @@
 # MAGIC   MIN(observation_timestamp) as earliest_record,
 # MAGIC   MAX(observation_timestamp) as latest_record
 # MAGIC FROM {catalog_name}.processed_data.climate_observations
-# MAGIC 
+# MAGIC
 # MAGIC UNION ALL
-# MAGIC 
+# MAGIC
 # MAGIC SELECT 
 # MAGIC   'Risk Models' as data_layer,
 # MAGIC   'Combined Assessments' as table_name,
@@ -611,7 +616,7 @@
 
 # MAGIC %md
 # MAGIC ## 8. Performance & Optimization
-# MAGIC 
+# MAGIC
 # MAGIC Check performance metrics and optimization opportunities.
 
 # COMMAND ----------
@@ -628,31 +633,30 @@
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC # Performance Summary
-# MAGIC print("🎯 Climate Risk Demo Walkthrough Complete!")
-# MAGIC print("=" * 50)
-# MAGIC print("✅ Sample data ingested successfully")
-# MAGIC print("✅ Data processing and standardization completed")
-# MAGIC print("✅ H3 geospatial indexing applied")
-# MAGIC print("✅ Risk assessment models executed")
-# MAGIC print("✅ Analytics and visualizations generated")
-# MAGIC print("✅ Data quality validation performed")
-# MAGIC print("=" * 50)
-# MAGIC print("\n📊 Next Steps:")
-# MAGIC print("1. Scale up with real climate data sources")
-# MAGIC print("2. Implement advanced ML models for risk prediction")
-# MAGIC print("3. Set up automated pipelines for continuous processing")
-# MAGIC print("4. Create production dashboards and alerts")
-# MAGIC print("5. Integrate with insurance business systems")
+# Performance Summary
+print("🎯 Climate Risk Demo Walkthrough Complete!")
+print("=" * 50)
+print("✅ Sample data ingested successfully")
+print("✅ Data processing and standardization completed")
+print("✅ H3 geospatial indexing applied")
+print("✅ Risk assessment models executed")
+print("✅ Analytics and visualizations generated")
+print("✅ Data quality validation performed")
+print("=" * 50)
+print("\n📊 Next Steps:")
+print("1. Scale up with real climate data sources")
+print("2. Implement advanced ML models for risk prediction")
+print("3. Set up automated pipelines for continuous processing")
+print("4. Create production dashboards and alerts")
+print("5. Integrate with insurance business systems")
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## Demo Summary
-# MAGIC 
+# MAGIC
 # MAGIC This demo walkthrough has successfully demonstrated:
-# MAGIC 
+# MAGIC
 # MAGIC ### ✅ Completed Steps
 # MAGIC 1. **Schema Validation** - Verified Unity Catalog setup
 # MAGIC 2. **Data Ingestion** - Loaded sample climate data across all tables
@@ -662,7 +666,7 @@
 # MAGIC 6. **Analytics** - Generated portfolio insights and visualizations
 # MAGIC 7. **Quality Validation** - Performed data quality checks
 # MAGIC 8. **Performance Review** - Analyzed optimization metrics
-# MAGIC 
+# MAGIC
 # MAGIC ### 🏗️ Architecture Features Demonstrated
 # MAGIC - **Unity Catalog** integration with parameterized setup
 # MAGIC - **Liquid Clustering** for optimized query performance  
@@ -671,14 +675,14 @@
 # MAGIC - **H3 Geospatial Indexing** for spatial analytics
 # MAGIC - **Risk Modeling** pipeline with multiple factors
 # MAGIC - **Analytics Views** for business intelligence
-# MAGIC 
+# MAGIC
 # MAGIC ### 📈 Business Value Delivered
 # MAGIC - **Risk Quantification** - Numerical risk scores for decision making
 # MAGIC - **Premium Optimization** - Data-driven premium multipliers
 # MAGIC - **Geographic Insights** - Spatial risk concentration analysis
 # MAGIC - **Portfolio Management** - Aggregate risk exposure metrics
 # MAGIC - **Operational Efficiency** - Automated risk assessment pipeline
-# MAGIC 
+# MAGIC
 # MAGIC ### 🚀 Production Readiness
 # MAGIC This demo provides the foundation for a production climate risk system. Scale by:
 # MAGIC - Connecting real-time weather APIs
