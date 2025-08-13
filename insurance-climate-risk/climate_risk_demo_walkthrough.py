@@ -62,39 +62,49 @@
 # MAGIC # Insert sample AccuWeather current conditions data
 # MAGIC spark.sql(f"USE SCHEMA {catalog_name}.raw_data")
 # MAGIC 
+# MAGIC # Execute the INSERT statement
+# MAGIC spark.sql(f"""
 # MAGIC INSERT INTO accuweather_current_conditions 
 # MAGIC (location_key, location_name, latitude, longitude, observation_time, 
 # MAGIC  temperature_celsius, temperature_fahrenheit, humidity_percent, pressure_mb,
 # MAGIC  wind_speed_kmh, wind_direction_degrees, precipitation_mm, weather_text, 
 # MAGIC  weather_icon, uv_index, visibility_km, cloud_cover_percent)
 # MAGIC VALUES 
-# MAGIC   ('SF001', {demo_location}, CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
+# MAGIC   ('SF001', '{demo_location}', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
 # MAGIC    current_timestamp(), 18.5, 65.3, 75, 1013.2, 15.0, 225, 0.0, 'Partly Cloudy', 3, 6, 16.0, 40),
 # MAGIC   ('SF002', 'Oakland, CA', 37.8044, -122.2711, 
 # MAGIC    current_timestamp(), 19.2, 66.6, 72, 1012.8, 12.0, 210, 0.0, 'Clear', 1, 7, 20.0, 20),
 # MAGIC   ('SF003', 'San Jose, CA', 37.3382, -121.8863, 
-# MAGIC    current_timestamp(), 21.1, 70.0, 68, 1014.1, 8.0, 180, 0.0, 'Sunny', 1, 8, 25.0, 10);
+# MAGIC    current_timestamp(), 21.1, 70.0, 68, 1014.1, 8.0, 180, 0.0, 'Sunny', 1, 8, 25.0, 10)
+# MAGIC """)
+# MAGIC 
+# MAGIC print("✅ Sample AccuWeather current conditions data inserted")
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC -- Insert sample daily forecast data
+# MAGIC %python
+# MAGIC # Insert sample daily forecast data
+# MAGIC spark.sql(f"""
 # MAGIC INSERT INTO accuweather_daily_forecasts 
 # MAGIC (location_key, location_name, latitude, longitude, forecast_date,
 # MAGIC  min_temperature_celsius, max_temperature_celsius, precipitation_probability_percent,
 # MAGIC  precipitation_amount_mm, weather_text, weather_icon, wind_speed_kmh, wind_direction_degrees)
 # MAGIC VALUES 
-# MAGIC   ('SF001', {demo_location}, CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
+# MAGIC   ('SF001', '{demo_location}', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
 # MAGIC    current_date(), 15.0, 22.0, 10, 0.0, 'Partly Cloudy', 3, 18.0, 240),
-# MAGIC   ('SF001', {demo_location}, CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
+# MAGIC   ('SF001', '{demo_location}', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
 # MAGIC    current_date() + 1, 16.0, 24.0, 5, 0.0, 'Sunny', 1, 15.0, 220),
-# MAGIC   ('SF001', {demo_location}, CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
-# MAGIC    current_date() + 2, 14.0, 20.0, 30, 2.5, 'Light Rain', 12, 20.0, 190);
+# MAGIC   ('SF001', '{demo_location}', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
+# MAGIC    current_date() + 2, 14.0, 20.0, 30, 2.5, 'Light Rain', 12, 20.0, 190)
+# MAGIC """)
+# MAGIC 
+# MAGIC print("✅ Sample daily forecast data inserted")
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC -- Insert sample historical climate data
+# MAGIC %python
+# MAGIC # Insert sample historical climate data
+# MAGIC spark.sql(f"""
 # MAGIC INSERT INTO historical_climate_data 
 # MAGIC (source, location_id, latitude, longitude, observation_date,
 # MAGIC  temperature_celsius, precipitation_mm, humidity_percent, wind_speed_kmh, pressure_mb,
@@ -105,12 +115,16 @@
 # MAGIC   ('NOAA', 'SF_STATION_1', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
 # MAGIC    current_date() - 29, 19.2, 1.2, 72, 15.0, 1010.8, 22.0, 0.0),
 # MAGIC   ('ERA5', 'SF_GRID_1', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
-# MAGIC    current_date() - 28, 16.5, 0.0, 68, 18.0, 1015.2, 28.0, 0.0);
+# MAGIC    current_date() - 28, 16.5, 0.0, 68, 18.0, 1015.2, 28.0, 0.0)
+# MAGIC """)
+# MAGIC 
+# MAGIC print("✅ Sample historical climate data inserted")
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC -- Insert sample elevation data
+# MAGIC %python
+# MAGIC # Insert sample elevation data
+# MAGIC spark.sql(f"""
 # MAGIC INSERT INTO elevation_data 
 # MAGIC (h3_cell_8, latitude, longitude, elevation_m, slope_degrees, aspect_degrees,
 # MAGIC  curvature, drainage_area_km2, distance_to_water_m, land_cover_type, soil_type,
@@ -121,7 +135,10 @@
 # MAGIC   ('8828308283fffff', 37.8044, -122.2711, 
 # MAGIC    15.0, 2.8, 180.0, 0.0, 200.2, 500.0, 'Urban', 'Sandy Loam', false, 'USGS'),
 # MAGIC   ('8828308285fffff', 37.3382, -121.8863, 
-# MAGIC    25.0, 3.5, 195.0, 0.1, 180.8, 1200.0, 'Suburban', 'Loam', false, 'USGS');
+# MAGIC    25.0, 3.5, 195.0, 0.1, 180.8, 1200.0, 'Suburban', 'Loam', false, 'USGS')
+# MAGIC """)
+# MAGIC 
+# MAGIC print("✅ Sample elevation data inserted")
 
 # COMMAND ----------
 
@@ -132,9 +149,9 @@
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC -- Process data into standardized climate observations
-# MAGIC USE SCHEMA {catalog_name}.processed_data;
+# MAGIC %python
+# MAGIC # Process data into standardized climate observations
+# MAGIC spark.sql(f"USE SCHEMA {catalog_name}.processed_data")
 # MAGIC 
 # MAGIC INSERT INTO climate_observations 
 # MAGIC (h3_cell_7, h3_cell_8, latitude, longitude, observation_timestamp,
