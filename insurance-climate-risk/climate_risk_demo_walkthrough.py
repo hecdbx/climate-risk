@@ -24,25 +24,30 @@
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC -- Set up demo parameters
-# MAGIC SET catalog_name = 'demo_hc';
-# MAGIC SET demo_location = 'San Francisco, CA';
-# MAGIC SET demo_latitude = '37.7749';
-# MAGIC SET demo_longitude = '-122.4194';
+# MAGIC %python
+# MAGIC # Set up demo parameters - modify as needed
+# MAGIC catalog_name = "demo_hc"
+# MAGIC demo_location = "San Francisco, CA"
+# MAGIC demo_latitude = "37.7749"
+# MAGIC demo_longitude = "-122.4194"
+# MAGIC 
+# MAGIC print(f"Demo Configuration:")
+# MAGIC print(f"Catalog: {catalog_name}")
+# MAGIC print(f"Location: {demo_location}")
+# MAGIC print(f"Coordinates: {demo_latitude}, {demo_longitude}")
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC -- Verify catalog and schemas exist
-# MAGIC SHOW SCHEMAS IN ${catalog_name};
+# MAGIC %python
+# MAGIC # Verify catalog and schemas exist
+# MAGIC display(spark.sql(f"SHOW SCHEMAS IN {catalog_name}"))
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC -- Check if tables are created
-# MAGIC USE CATALOG ${catalog_name};
-# MAGIC SHOW TABLES IN raw_data;
+# MAGIC %python
+# MAGIC # Check if tables are created
+# MAGIC spark.sql(f"USE CATALOG {catalog_name}")
+# MAGIC display(spark.sql("SHOW TABLES IN raw_data"))
 
 # COMMAND ----------
 
@@ -53,9 +58,9 @@
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC -- Insert sample AccuWeather current conditions data
-# MAGIC USE SCHEMA ${catalog_name}.raw_data;
+# MAGIC %python
+# MAGIC # Insert sample AccuWeather current conditions data
+# MAGIC spark.sql(f"USE SCHEMA {catalog_name}.raw_data")
 # MAGIC 
 # MAGIC INSERT INTO accuweather_current_conditions 
 # MAGIC (location_key, location_name, latitude, longitude, observation_time, 
@@ -63,7 +68,7 @@
 # MAGIC  wind_speed_kmh, wind_direction_degrees, precipitation_mm, weather_text, 
 # MAGIC  weather_icon, uv_index, visibility_km, cloud_cover_percent)
 # MAGIC VALUES 
-# MAGIC   ('SF001', ${demo_location}, CAST(${demo_latitude} AS DOUBLE), CAST(${demo_longitude} AS DOUBLE), 
+# MAGIC   ('SF001', {demo_location}, CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
 # MAGIC    current_timestamp(), 18.5, 65.3, 75, 1013.2, 15.0, 225, 0.0, 'Partly Cloudy', 3, 6, 16.0, 40),
 # MAGIC   ('SF002', 'Oakland, CA', 37.8044, -122.2711, 
 # MAGIC    current_timestamp(), 19.2, 66.6, 72, 1012.8, 12.0, 210, 0.0, 'Clear', 1, 7, 20.0, 20),
@@ -79,11 +84,11 @@
 # MAGIC  min_temperature_celsius, max_temperature_celsius, precipitation_probability_percent,
 # MAGIC  precipitation_amount_mm, weather_text, weather_icon, wind_speed_kmh, wind_direction_degrees)
 # MAGIC VALUES 
-# MAGIC   ('SF001', ${demo_location}, CAST(${demo_latitude} AS DOUBLE), CAST(${demo_longitude} AS DOUBLE), 
+# MAGIC   ('SF001', {demo_location}, CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
 # MAGIC    current_date(), 15.0, 22.0, 10, 0.0, 'Partly Cloudy', 3, 18.0, 240),
-# MAGIC   ('SF001', ${demo_location}, CAST(${demo_latitude} AS DOUBLE), CAST(${demo_longitude} AS DOUBLE), 
+# MAGIC   ('SF001', {demo_location}, CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
 # MAGIC    current_date() + 1, 16.0, 24.0, 5, 0.0, 'Sunny', 1, 15.0, 220),
-# MAGIC   ('SF001', ${demo_location}, CAST(${demo_latitude} AS DOUBLE), CAST(${demo_longitude} AS DOUBLE), 
+# MAGIC   ('SF001', {demo_location}, CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
 # MAGIC    current_date() + 2, 14.0, 20.0, 30, 2.5, 'Light Rain', 12, 20.0, 190);
 
 # COMMAND ----------
@@ -95,11 +100,11 @@
 # MAGIC  temperature_celsius, precipitation_mm, humidity_percent, wind_speed_kmh, pressure_mb,
 # MAGIC  soil_moisture_percent, snow_depth_cm)
 # MAGIC VALUES 
-# MAGIC   ('NOAA', 'SF_STATION_1', CAST(${demo_latitude} AS DOUBLE), CAST(${demo_longitude} AS DOUBLE), 
+# MAGIC   ('NOAA', 'SF_STATION_1', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
 # MAGIC    current_date() - 30, 17.8, 0.0, 70, 12.0, 1012.5, 25.0, 0.0),
-# MAGIC   ('NOAA', 'SF_STATION_1', CAST(${demo_latitude} AS DOUBLE), CAST(${demo_longitude} AS DOUBLE), 
+# MAGIC   ('NOAA', 'SF_STATION_1', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
 # MAGIC    current_date() - 29, 19.2, 1.2, 72, 15.0, 1010.8, 22.0, 0.0),
-# MAGIC   ('ERA5', 'SF_GRID_1', CAST(${demo_latitude} AS DOUBLE), CAST(${demo_longitude} AS DOUBLE), 
+# MAGIC   ('ERA5', 'SF_GRID_1', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
 # MAGIC    current_date() - 28, 16.5, 0.0, 68, 18.0, 1015.2, 28.0, 0.0);
 
 # COMMAND ----------
@@ -111,7 +116,7 @@
 # MAGIC  curvature, drainage_area_km2, distance_to_water_m, land_cover_type, soil_type,
 # MAGIC  in_floodplain, data_source)
 # MAGIC VALUES 
-# MAGIC   ('8828308281fffff', CAST(${demo_latitude} AS DOUBLE), CAST(${demo_longitude} AS DOUBLE), 
+# MAGIC   ('8828308281fffff', CAST({demo_latitude} AS DOUBLE), CAST({demo_longitude} AS DOUBLE), 
 # MAGIC    52.0, 5.2, 225.0, -0.1, 150.5, 800.0, 'Urban', 'Clay Loam', false, 'USGS'),
 # MAGIC   ('8828308283fffff', 37.8044, -122.2711, 
 # MAGIC    15.0, 2.8, 180.0, 0.0, 200.2, 500.0, 'Urban', 'Sandy Loam', false, 'USGS'),
@@ -129,7 +134,7 @@
 
 # MAGIC %sql
 # MAGIC -- Process data into standardized climate observations
-# MAGIC USE SCHEMA ${catalog_name}.processed_data;
+# MAGIC USE SCHEMA {catalog_name}.processed_data;
 # MAGIC 
 # MAGIC INSERT INTO climate_observations 
 # MAGIC (h3_cell_7, h3_cell_8, latitude, longitude, observation_timestamp,
@@ -149,7 +154,7 @@
 # MAGIC   weather_text,
 # MAGIC   'AccuWeather' as data_source,
 # MAGIC   0.95 as data_quality_score
-# MAGIC FROM ${catalog_name}.raw_data.accuweather_current_conditions;
+# MAGIC FROM {catalog_name}.raw_data.accuweather_current_conditions;
 
 # COMMAND ----------
 
@@ -181,7 +186,7 @@
 
 # MAGIC %sql
 # MAGIC -- Update H3 cells in climate observations (using placeholder if H3 functions not available)
-# MAGIC UPDATE ${catalog_name}.processed_data.climate_observations 
+# MAGIC UPDATE {catalog_name}.processed_data.climate_observations 
 # MAGIC SET 
 # MAGIC   h3_cell_7 = CASE 
 # MAGIC     WHEN latitude IS NOT NULL AND longitude IS NOT NULL 
@@ -221,7 +226,7 @@
 # MAGIC   SUM(CASE WHEN precipitation_mm = 0 THEN 1 ELSE 0 END) as dry_days,
 # MAGIC   0 as extreme_weather_events, -- Would be calculated based on thresholds
 # MAGIC   100.0 as data_completeness_percent
-# MAGIC FROM ${catalog_name}.processed_data.climate_observations
+# MAGIC FROM {catalog_name}.processed_data.climate_observations
 # MAGIC GROUP BY h3_cell_7, DATE(observation_timestamp);
 
 # COMMAND ----------
@@ -235,7 +240,7 @@
 
 # MAGIC %sql
 # MAGIC -- Calculate drought risk assessments
-# MAGIC USE SCHEMA ${catalog_name}.risk_models;
+# MAGIC USE SCHEMA {catalog_name}.risk_models;
 # MAGIC 
 # MAGIC INSERT INTO drought_risk_assessments 
 # MAGIC (h3_cell_7, latitude, longitude, assessment_date,
@@ -291,7 +296,7 @@
 # MAGIC   END as recommended_action,
 # MAGIC   'demo_v1.0' as model_version,
 # MAGIC   0.85 as confidence_score
-# MAGIC FROM ${catalog_name}.processed_data.climate_aggregations;
+# MAGIC FROM {catalog_name}.processed_data.climate_aggregations;
 
 # COMMAND ----------
 
@@ -366,8 +371,8 @@
 # MAGIC   END as coverage_recommendation,
 # MAGIC   'demo_v1.0' as model_version,
 # MAGIC   0.82 as confidence_score
-# MAGIC FROM ${catalog_name}.processed_data.climate_aggregations ca
-# MAGIC LEFT JOIN ${catalog_name}.raw_data.elevation_data ed 
+# MAGIC FROM {catalog_name}.processed_data.climate_aggregations ca
+# MAGIC LEFT JOIN {catalog_name}.raw_data.elevation_data ed 
 # MAGIC   ON ABS(ca.latitude - ed.latitude) < 0.01 AND ABS(ca.longitude - ed.longitude) < 0.01;
 
 # COMMAND ----------
@@ -421,7 +426,7 @@
 
 # MAGIC %sql
 # MAGIC -- Use analytics schema
-# MAGIC USE SCHEMA ${catalog_name}.analytics;
+# MAGIC USE SCHEMA {catalog_name}.analytics;
 
 # COMMAND ----------
 
@@ -523,7 +528,7 @@
 # MAGIC   COUNT(CASE WHEN overall_risk_level IN ('high', 'very_high') THEN 1 END) as high_risk_count,
 # MAGIC   COUNT(CASE WHEN primary_risk_factor = 'drought' THEN 1 END) as drought_primary_count,
 # MAGIC   COUNT(CASE WHEN primary_risk_factor = 'flood' THEN 1 END) as flood_primary_count
-# MAGIC FROM ${catalog_name}.risk_models.combined_risk_assessments;
+# MAGIC FROM {catalog_name}.risk_models.combined_risk_assessments;
 
 # COMMAND ----------
 
@@ -536,7 +541,7 @@
 # MAGIC   AVG(drought_risk_score) as avg_drought_score,
 # MAGIC   AVG(flood_risk_score) as avg_flood_score,
 # MAGIC   AVG(combined_premium_multiplier) as avg_premium_multiplier
-# MAGIC FROM ${catalog_name}.risk_models.combined_risk_assessments
+# MAGIC FROM {catalog_name}.risk_models.combined_risk_assessments
 # MAGIC GROUP BY primary_risk_factor, overall_risk_level
 # MAGIC ORDER BY primary_risk_factor, overall_risk_level;
 
@@ -559,7 +564,7 @@
 # MAGIC   COUNT(CASE WHEN temperature_celsius IS NULL THEN 1 END) as missing_temperature,
 # MAGIC   MIN(observation_time) as earliest_record,
 # MAGIC   MAX(observation_time) as latest_record
-# MAGIC FROM ${catalog_name}.raw_data.accuweather_current_conditions
+# MAGIC FROM {catalog_name}.raw_data.accuweather_current_conditions
 # MAGIC 
 # MAGIC UNION ALL
 # MAGIC 
@@ -571,7 +576,7 @@
 # MAGIC   COUNT(CASE WHEN data_quality_score < 0.8 THEN 1 END) as low_quality_records,
 # MAGIC   MIN(observation_timestamp) as earliest_record,
 # MAGIC   MAX(observation_timestamp) as latest_record
-# MAGIC FROM ${catalog_name}.processed_data.climate_observations
+# MAGIC FROM {catalog_name}.processed_data.climate_observations
 # MAGIC 
 # MAGIC UNION ALL
 # MAGIC 
@@ -583,7 +588,7 @@
 # MAGIC   COUNT(CASE WHEN confidence_score < 0.7 THEN 1 END) as low_confidence_records,
 # MAGIC   MIN(assessment_date) as earliest_record,
 # MAGIC   MAX(assessment_date) as latest_record
-# MAGIC FROM ${catalog_name}.risk_models.combined_risk_assessments;
+# MAGIC FROM {catalog_name}.risk_models.combined_risk_assessments;
 
 # COMMAND ----------
 
@@ -596,13 +601,13 @@
 
 # MAGIC %sql
 # MAGIC -- Table statistics and performance metrics
-# MAGIC DESCRIBE EXTENDED ${catalog_name}.risk_models.combined_risk_assessments;
+# MAGIC DESCRIBE EXTENDED {catalog_name}.risk_models.combined_risk_assessments;
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC -- Check clustering effectiveness
-# MAGIC SHOW TBLPROPERTIES ${catalog_name}.risk_models.combined_risk_assessments;
+# MAGIC SHOW TBLPROPERTIES {catalog_name}.risk_models.combined_risk_assessments;
 
 # COMMAND ----------
 

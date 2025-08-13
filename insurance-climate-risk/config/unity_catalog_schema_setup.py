@@ -20,13 +20,14 @@
 # MAGIC %md
 # MAGIC ## Configuration Parameters
 # MAGIC 
-# MAGIC Set the catalog name parameter using SQL SET command. Modify the value as needed for your environment.
+# MAGIC Set the catalog name parameter using Python variables. Modify the value as needed for your environment.
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC -- Parameter for catalog name - modify this value as needed
-# MAGIC SET catalog_name = 'demo_hc';
+# MAGIC %python
+# MAGIC # Set parameter values - modify as needed for your environment
+# MAGIC catalog_name = "demo_hc"
+# MAGIC print(f"Using catalog: {catalog_name}")
 
 # COMMAND ----------
 
@@ -37,16 +38,18 @@
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC -- Create catalog for climate risk data
-# MAGIC CREATE CATALOG IF NOT EXISTS ${catalog_name}
-# MAGIC COMMENT 'Unified catalog for climate risk insurance models and data';
+# MAGIC %python
+# MAGIC # Create catalog for climate risk data
+# MAGIC spark.sql(f"""
+# MAGIC CREATE CATALOG IF NOT EXISTS {catalog_name}
+# MAGIC COMMENT 'Unified catalog for climate risk insurance models and data'
+# MAGIC """)
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC -- Use the catalog
-# MAGIC USE CATALOG ${catalog_name};
+# MAGIC %python
+# MAGIC # Use the catalog
+# MAGIC spark.sql(f"USE CATALOG {catalog_name}")
 
 # COMMAND ----------
 
@@ -442,27 +445,49 @@
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC -- Grant permissions (adjust as needed for your organization)
-# MAGIC GRANT USAGE ON CATALOG ${catalog_name} TO `domain-users`;
-# MAGIC GRANT USAGE ON SCHEMA ${catalog_name}.raw_data TO `domain-users`;
-# MAGIC GRANT USAGE ON SCHEMA ${catalog_name}.processed_data TO `domain-users`;
-# MAGIC GRANT USAGE ON SCHEMA ${catalog_name}.risk_models TO `domain-users`;
-# MAGIC GRANT USAGE ON SCHEMA ${catalog_name}.analytics TO `domain-users`;
+# MAGIC %python
+# MAGIC # Grant permissions (adjust as needed for your organization)
+# MAGIC grant_statements = [
+# MAGIC     f"GRANT USAGE ON CATALOG {catalog_name} TO `domain-users`",
+# MAGIC     f"GRANT USAGE ON SCHEMA {catalog_name}.raw_data TO `domain-users`",
+# MAGIC     f"GRANT USAGE ON SCHEMA {catalog_name}.processed_data TO `domain-users`",
+# MAGIC     f"GRANT USAGE ON SCHEMA {catalog_name}.risk_models TO `domain-users`",
+# MAGIC     f"GRANT USAGE ON SCHEMA {catalog_name}.analytics TO `domain-users`"
+# MAGIC ]
+# MAGIC 
+# MAGIC for stmt in grant_statements:
+# MAGIC     try:
+# MAGIC         spark.sql(stmt)
+# MAGIC         print(f"✅ {stmt}")
+# MAGIC     except Exception as e:
+# MAGIC         print(f"⚠️ {stmt} - {str(e)}")
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC -- Grant read access to analytics teams
-# MAGIC GRANT SELECT ON SCHEMA ${catalog_name}.analytics TO `analytics-team`;
+# MAGIC %python
+# MAGIC # Grant read access to analytics teams
+# MAGIC try:
+# MAGIC     spark.sql(f"GRANT SELECT ON SCHEMA {catalog_name}.analytics TO `analytics-team`")
+# MAGIC     print(f"✅ Granted SELECT on {catalog_name}.analytics to analytics-team")
+# MAGIC except Exception as e:
+# MAGIC     print(f"⚠️ Grant SELECT failed: {str(e)}")
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC -- Grant write access to data engineering teams
-# MAGIC GRANT ALL PRIVILEGES ON SCHEMA ${catalog_name}.raw_data TO `data-engineering-team`;
-# MAGIC GRANT ALL PRIVILEGES ON SCHEMA ${catalog_name}.processed_data TO `data-engineering-team`;
-# MAGIC GRANT ALL PRIVILEGES ON SCHEMA ${catalog_name}.risk_models TO `data-engineering-team`;
+# MAGIC %python
+# MAGIC # Grant write access to data engineering teams
+# MAGIC engineering_grants = [
+# MAGIC     f"GRANT ALL PRIVILEGES ON SCHEMA {catalog_name}.raw_data TO `data-engineering-team`",
+# MAGIC     f"GRANT ALL PRIVILEGES ON SCHEMA {catalog_name}.processed_data TO `data-engineering-team`",
+# MAGIC     f"GRANT ALL PRIVILEGES ON SCHEMA {catalog_name}.risk_models TO `data-engineering-team`"
+# MAGIC ]
+# MAGIC 
+# MAGIC for stmt in engineering_grants:
+# MAGIC     try:
+# MAGIC         spark.sql(stmt)
+# MAGIC         print(f"✅ {stmt}")
+# MAGIC     except Exception as e:
+# MAGIC         print(f"⚠️ {stmt} - {str(e)}")
 
 # COMMAND ----------
 
@@ -484,7 +509,7 @@
 # MAGIC -- Example: Update H3 cells in AccuWeather current conditions table
 # MAGIC -- Use this pattern after inserting data into your tables
 # MAGIC /*
-# MAGIC UPDATE ${catalog_name}.raw_data.accuweather_current_conditions 
+# MAGIC UPDATE {catalog_name}.raw_data.accuweather_current_conditions 
 # MAGIC SET 
 # MAGIC   h3_cell_7 = h3_longlattostring(longitude, latitude, 7),
 # MAGIC   h3_cell_8 = h3_longlattostring(longitude, latitude, 8)
@@ -503,7 +528,7 @@
 # MAGIC %sql
 # MAGIC -- Alternative H3 function approach
 # MAGIC /*
-# MAGIC UPDATE ${catalog_name}.raw_data.accuweather_current_conditions 
+# MAGIC UPDATE {catalog_name}.raw_data.accuweather_current_conditions 
 # MAGIC SET 
 # MAGIC   h3_cell_7 = ST_H3_LONGLATTOSTRING(longitude, latitude, 7),
 # MAGIC   h3_cell_8 = ST_H3_LONGLATTOSTRING(longitude, latitude, 8)
@@ -529,33 +554,33 @@
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC -- Show created schemas
-# MAGIC SHOW SCHEMAS IN ${catalog_name};
+# MAGIC %python
+# MAGIC # Show created schemas
+# MAGIC display(spark.sql(f"SHOW SCHEMAS IN {catalog_name}"))
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC -- Show tables in raw_data schema
-# MAGIC SHOW TABLES IN ${catalog_name}.raw_data;
+# MAGIC %python
+# MAGIC # Show tables in raw_data schema
+# MAGIC display(spark.sql(f"SHOW TABLES IN {catalog_name}.raw_data"))
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC -- Show tables in processed_data schema
-# MAGIC SHOW TABLES IN ${catalog_name}.processed_data;
+# MAGIC %python
+# MAGIC # Show tables in processed_data schema
+# MAGIC display(spark.sql(f"SHOW TABLES IN {catalog_name}.processed_data"))
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC -- Show tables in risk_models schema
-# MAGIC SHOW TABLES IN ${catalog_name}.risk_models;
+# MAGIC %python
+# MAGIC # Show tables in risk_models schema
+# MAGIC display(spark.sql(f"SHOW TABLES IN {catalog_name}.risk_models"))
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC -- Show views in analytics schema
-# MAGIC SHOW TABLES IN ${catalog_name}.analytics;
+# MAGIC %python
+# MAGIC # Show views in analytics schema
+# MAGIC display(spark.sql(f"SHOW TABLES IN {catalog_name}.analytics"))
 
 # COMMAND ----------
 
@@ -565,7 +590,7 @@
 # MAGIC Your Unity Catalog schema for the Climate Risk Insurance Models has been successfully set up with:
 # MAGIC 
 # MAGIC ### Catalogs & Schemas
-# MAGIC - **Catalog:** `${catalog_name}`
+# MAGIC - **Catalog:** Parameterized (configurable)
 # MAGIC - **Schemas:** `raw_data`, `processed_data`, `risk_models`, `analytics`
 # MAGIC 
 # MAGIC ### Raw Data Tables (4)
