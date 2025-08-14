@@ -163,14 +163,15 @@ except Exception as e:
 # MAGIC   visibility_km DOUBLE,
 # MAGIC   cloud_cover_percent INT,
 # MAGIC   ingestion_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+# MAGIC   data_source STRING DEFAULT 'accuweather_api',
+# MAGIC   record_status STRING DEFAULT 'active',
 # MAGIC   h3_cell_7 STRING,
 # MAGIC   h3_cell_8 STRING
 # MAGIC ) 
 # MAGIC USING DELTA
 # MAGIC CLUSTER BY (DATE(observation_time), location_key)
 # MAGIC TBLPROPERTIES (
-# MAGIC   'delta.enableChangeDataFeed' = 'true',
-# MAGIC   'delta.enablePredictiveOptimization' = 'true'
+# MAGIC   'delta.enableChangeDataFeed' = 'true'
 # MAGIC )
 # MAGIC COMMENT 'Staging: Real-time current weather conditions from AccuWeather API';
 
@@ -199,8 +200,7 @@ except Exception as e:
 # MAGIC USING DELTA
 # MAGIC CLUSTER BY (forecast_date, location_key)
 # MAGIC TBLPROPERTIES (
-# MAGIC   'delta.enableChangeDataFeed' = 'true',
-# MAGIC   'delta.enablePredictiveOptimization' = 'true'
+# MAGIC   'delta.enableChangeDataFeed' = 'true'
 # MAGIC )
 # MAGIC COMMENT 'Staging: Daily weather forecasts from AccuWeather API';
 
@@ -270,9 +270,7 @@ except Exception as e:
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- Set up processed data schema
-# MAGIC USE SCHEMA processed_data;
-# MAGIC ALTER SCHEMA processed_data ENABLE PREDICTIVE OPTIMIZATION;
+
 
 # COMMAND ----------
 
@@ -342,9 +340,7 @@ except Exception as e:
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- Set up risk models schema
-# MAGIC USE SCHEMA risk_models;
-# MAGIC ALTER SCHEMA risk_models ENABLE PREDICTIVE OPTIMIZATION;
+
 
 # COMMAND ----------
 
@@ -368,8 +364,9 @@ except Exception as e:
 # MAGIC   insurance_risk_class STRING,
 # MAGIC   premium_multiplier DOUBLE,
 # MAGIC   recommended_action STRING,
-# MAGIC   model_version STRING,
+# MAGIC   model_version STRING DEFAULT '1.0',
 # MAGIC   confidence_score DOUBLE,
+# MAGIC   assessment_status STRING DEFAULT 'active',
 # MAGIC   processing_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
 # MAGIC )
 # MAGIC USING DELTA
@@ -455,10 +452,7 @@ except Exception as e:
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- Set up analytics schema
-# MAGIC USE SCHEMA analytics;
-# MAGIC ALTER SCHEMA analytics ENABLE PREDICTIVE OPTIMIZATION;
-# MAGIC
+
 
 # COMMAND ----------
 
@@ -607,6 +601,40 @@ for stmt in engineering_grants:
 # MAGIC - `climate_observations`
 # MAGIC - `climate_aggregations`
 # MAGIC - Risk assessment tables
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Enable Predictive Optimization
+# MAGIC
+# MAGIC Enabling predictive optimization for all tables using ALTER TABLE commands instead of table properties.
+
+# COMMAND ----------
+
+# Enable predictive optimization for all staging tables
+spark.sql(f"ALTER TABLE {catalog_name}.climate_risk.staging_accuweather_current_conditions ENABLE PREDICTIVE OPTIMIZATION")
+spark.sql(f"ALTER TABLE {catalog_name}.climate_risk.staging_accuweather_daily_forecasts ENABLE PREDICTIVE OPTIMIZATION")
+spark.sql(f"ALTER TABLE {catalog_name}.climate_risk.staging_historical_climate_data ENABLE PREDICTIVE OPTIMIZATION")
+
+print("✅ Enabled predictive optimization for staging tables")
+
+# COMMAND ----------
+
+# Enable predictive optimization for processed tables
+spark.sql(f"ALTER TABLE {catalog_name}.climate_risk.climate_observations ENABLE PREDICTIVE OPTIMIZATION")
+spark.sql(f"ALTER TABLE {catalog_name}.climate_risk.climate_aggregations ENABLE PREDICTIVE OPTIMIZATION")
+spark.sql(f"ALTER TABLE {catalog_name}.climate_risk.elevation_data ENABLE PREDICTIVE OPTIMIZATION")
+
+print("✅ Enabled predictive optimization for processed tables")
+
+# COMMAND ----------
+
+# Enable predictive optimization for risk assessment tables
+spark.sql(f"ALTER TABLE {catalog_name}.climate_risk.drought_risk_assessments ENABLE PREDICTIVE OPTIMIZATION")
+spark.sql(f"ALTER TABLE {catalog_name}.climate_risk.flood_risk_assessments ENABLE PREDICTIVE OPTIMIZATION")
+spark.sql(f"ALTER TABLE {catalog_name}.climate_risk.combined_risk_assessments ENABLE PREDICTIVE OPTIMIZATION")
+
+print("✅ Enabled predictive optimization for risk assessment tables")
 
 # COMMAND ----------
 
