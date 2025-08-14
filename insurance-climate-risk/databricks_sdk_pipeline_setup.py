@@ -55,10 +55,12 @@ config = {
     "resource_prefix": "climate_risk",
     "workspace_url": spark.conf.get("spark.databricks.workspaceUrl"),
     "pipeline_target_schema": "climate_risk",
-    "raw_data_path": f"/Volumes/{catalog_name}/climate_risk/raw_data_volume/",
-    "checkpoint_path": f"/Volumes/{catalog_name}/climate_risk/pipeline_checkpoints_volume/",
-    "storage_location": f"/Volumes/{catalog_name}/climate_risk/processed_data_volume/",
-    "model_artifacts_path": f"/Volumes/{catalog_name}/climate_risk/model_artifacts_volume/"
+    "raw_data_path": f"/Volumes/{catalog_name}/climate_risk/data_volume/raw_data/",
+    "checkpoint_path": f"/Volumes/{catalog_name}/climate_risk/data_volume/pipeline_checkpoints/",
+    "storage_location": f"/Volumes/{catalog_name}/climate_risk/data_volume/processed_data/",
+    "model_artifacts_path": f"/Volumes/{catalog_name}/climate_risk/data_volume/model_artifacts/",
+    "staging_path": f"/Volumes/{catalog_name}/climate_risk/data_volume/staging/",
+    "analytics_path": f"/Volumes/{catalog_name}/climate_risk/data_volume/analytics/"
 }
 
 print("Configuration:")

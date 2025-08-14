@@ -60,32 +60,65 @@ spark.sql(f"USE CATALOG {catalog_name}")
 # MAGIC %md
 # MAGIC ## Unity Catalog Volume Creation
 # MAGIC 
-# MAGIC Creating volumes for data storage instead of deprecated /mnt paths.
+# MAGIC Creating a single volume with organized directories instead of deprecated /mnt paths.
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- Create volumes for different data storage needs
-# MAGIC CREATE VOLUME IF NOT EXISTS climate_risk.raw_data_volume
-# MAGIC COMMENT 'Volume for storing raw climate data files from external sources';
+# MAGIC -- Create single volume for all climate data storage needs
+# MAGIC CREATE VOLUME IF NOT EXISTS climate_risk.data_volume
+# MAGIC COMMENT 'Unified volume for all climate risk data: raw, processed, models, and pipeline artifacts';
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC CREATE VOLUME IF NOT EXISTS climate_risk.processed_data_volume
-# MAGIC COMMENT 'Volume for storing processed and cleaned data files';
+# MAGIC %md
+# MAGIC ## Volume Directory Structure Setup
+# MAGIC 
+# MAGIC Creating organized directories within the volume for different data types.
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC CREATE VOLUME IF NOT EXISTS climate_risk.model_artifacts_volume
-# MAGIC COMMENT 'Volume for storing ML model artifacts and checkpoints';
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC CREATE VOLUME IF NOT EXISTS climate_risk.pipeline_checkpoints_volume
-# MAGIC COMMENT 'Volume for Delta Live Tables pipeline checkpoints';
+# MAGIC %python
+# MAGIC import os
+# MAGIC 
+# MAGIC # Define volume path and directory structure
+# MAGIC volume_path = f"/Volumes/{catalog_name}/climate_risk/data_volume"
+# MAGIC 
+# MAGIC # Directory structure for organized data storage
+# MAGIC directories = [
+# MAGIC     "raw_data",           # Raw climate data files from external sources
+# MAGIC     "processed_data",     # Processed and cleaned data files  
+# MAGIC     "model_artifacts",    # ML model artifacts and checkpoints
+# MAGIC     "pipeline_checkpoints", # Delta Live Tables pipeline checkpoints
+# MAGIC     "staging",           # Temporary staging area for data processing
+# MAGIC     "analytics"          # Analytics outputs and reports
+# MAGIC ]
+# MAGIC 
+# MAGIC print(f"📁 Setting up directory structure in volume: {volume_path}")
+# MAGIC print("=" * 60)
+# MAGIC 
+# MAGIC # Create directories if they don't exist
+# MAGIC for directory in directories:
+# MAGIC     dir_path = os.path.join(volume_path, directory)
+# MAGIC     try:
+# MAGIC         # Use dbutils to create directories in Unity Catalog volume
+# MAGIC         dbutils.fs.mkdirs(dir_path)
+# MAGIC         print(f"✅ Created directory: {directory}/")
+# MAGIC     except Exception as e:
+# MAGIC         # Directory might already exist, which is fine
+# MAGIC         if "already exists" in str(e).lower() or "fileexists" in str(e).lower():
+# MAGIC             print(f"✅ Directory exists: {directory}/")
+# MAGIC         else:
+# MAGIC             print(f"⚠️  Warning creating {directory}/: {str(e)}")
+# MAGIC 
+# MAGIC print("\n📂 Volume structure:")
+# MAGIC try:
+# MAGIC     # List the volume contents to verify structure
+# MAGIC     contents = dbutils.fs.ls(volume_path)
+# MAGIC     for item in contents:
+# MAGIC         print(f"   📁 {item.name}")
+# MAGIC except Exception as e:
+# MAGIC     print(f"   ⚠️  Could not list volume contents: {str(e)}")
 
 # COMMAND ----------
 
@@ -677,21 +710,14 @@ display(spark.sql(f"SHOW VOLUMES IN {catalog_name}.climate_risk"))
 # MAGIC     print("🗑️  Starting cleanup of climate_risk schema...")
 # MAGIC     
 # MAGIC     try:
-# MAGIC         # Drop all volumes first (this will delete files)
-# MAGIC         volumes_to_drop = [
-# MAGIC             "raw_data_volume",
-# MAGIC             "processed_data_volume", 
-# MAGIC             "model_artifacts_volume",
-# MAGIC             "pipeline_checkpoints_volume"
-# MAGIC         ]
-# MAGIC         
-# MAGIC         print("📁 Dropping volumes and data files...")
-# MAGIC         for volume in volumes_to_drop:
-# MAGIC             try:
-# MAGIC                 spark.sql(f"DROP VOLUME IF EXISTS {catalog_name}.climate_risk.{volume}")
-# MAGIC                 print(f"   ✅ Dropped volume: {volume}")
-# MAGIC             except Exception as e:
-# MAGIC                 print(f"   ⚠️  Could not drop volume {volume}: {str(e)}")
+# MAGIC         # Drop the unified volume (this will delete all files and directories)
+# MAGIC         print("📁 Dropping unified data volume and all files...")
+# MAGIC         try:
+# MAGIC             spark.sql(f"DROP VOLUME IF EXISTS {catalog_name}.climate_risk.data_volume")
+# MAGIC             print(f"   ✅ Dropped volume: data_volume")
+# MAGIC             print(f"   📂 All directories removed: raw_data, processed_data, model_artifacts, pipeline_checkpoints, staging, analytics")
+# MAGIC         except Exception as e:
+# MAGIC             print(f"   ⚠️  Could not drop volume data_volume: {str(e)}")
 # MAGIC         
 # MAGIC         # Drop the entire schema (this will drop all tables)
 # MAGIC         print("🗄️  Dropping climate_risk schema and all tables...")
@@ -733,13 +759,23 @@ display(spark.sql(f"SHOW VOLUMES IN {catalog_name}.climate_risk"))
 # MAGIC         else:
 # MAGIC             print("   📭 No tables found")
 # MAGIC         
-# MAGIC         # List volumes  
+# MAGIC         # List volumes and directory structure
 # MAGIC         print("\n📁 Volumes:")
 # MAGIC         try:
 # MAGIC             volumes = spark.sql(f"SHOW VOLUMES IN {catalog_name}.climate_risk").collect()
 # MAGIC             if volumes:
 # MAGIC                 for volume in volumes:
 # MAGIC                     print(f"   📦 {volume.volume_name}")
+# MAGIC                     # Show directory structure within the volume
+# MAGIC                     if volume.volume_name == "data_volume":
+# MAGIC                         try:
+# MAGIC                             volume_path = f"/Volumes/{catalog_name}/climate_risk/data_volume"
+# MAGIC                             contents = dbutils.fs.ls(volume_path)
+# MAGIC                             print("      📂 Directories:")
+# MAGIC                             for item in contents:
+# MAGIC                                 print(f"         📁 {item.name}")
+# MAGIC                         except Exception as dir_e:
+# MAGIC                             print(f"      ⚠️  Could not list volume contents: {str(dir_e)}")
 # MAGIC             else:
 # MAGIC                 print("   📭 No volumes found")
 # MAGIC         except Exception as e:
