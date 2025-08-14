@@ -58,6 +58,38 @@ spark.sql(f"USE CATALOG {catalog_name}")
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## Unity Catalog Volume Creation
+# MAGIC 
+# MAGIC Creating volumes for data storage instead of deprecated /mnt paths.
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC -- Create volumes for different data storage needs
+# MAGIC CREATE VOLUME IF NOT EXISTS climate_risk.raw_data_volume
+# MAGIC COMMENT 'Volume for storing raw climate data files from external sources';
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC CREATE VOLUME IF NOT EXISTS climate_risk.processed_data_volume
+# MAGIC COMMENT 'Volume for storing processed and cleaned data files';
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC CREATE VOLUME IF NOT EXISTS climate_risk.model_artifacts_volume
+# MAGIC COMMENT 'Volume for storing ML model artifacts and checkpoints';
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC CREATE VOLUME IF NOT EXISTS climate_risk.pipeline_checkpoints_volume
+# MAGIC COMMENT 'Volume for Delta Live Tables pipeline checkpoints';
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## Climate Risk Data Tables
 # MAGIC 
 # MAGIC Setting up tables in a unified schema with staging, processed, and analytics layers:
@@ -558,23 +590,13 @@ display(spark.sql(f"SHOW SCHEMAS IN {catalog_name}"))
 
 # COMMAND ----------
 
-# Show tables in raw_data schema
-display(spark.sql(f"SHOW TABLES IN {catalog_name}.raw_data"))
+# Show all tables in unified climate_risk schema
+display(spark.sql(f"SHOW TABLES IN {catalog_name}.climate_risk"))
 
 # COMMAND ----------
 
-# Show tables in processed_data schema
-display(spark.sql(f"SHOW TABLES IN {catalog_name}.processed_data"))
-
-# COMMAND ----------
-
-# Show tables in risk_models schema
-display(spark.sql(f"SHOW TABLES IN {catalog_name}.risk_models"))
-
-# COMMAND ----------
-
-# Show views in analytics schema
-display(spark.sql(f"SHOW TABLES IN {catalog_name}.analytics"))
+# Show all volumes in climate_risk schema
+display(spark.sql(f"SHOW VOLUMES IN {catalog_name}.climate_risk"))
 
 # COMMAND ----------
 
@@ -619,3 +641,138 @@ display(spark.sql(f"SHOW TABLES IN {catalog_name}.analytics"))
 # MAGIC 3. Run the risk assessment models
 # MAGIC 4. Create dashboards using the analytics views
 # MAGIC 5. Monitor performance and adjust clustering as needed
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Schema Cleanup Functions
+# MAGIC 
+# MAGIC Functions to clean up the schema and volumes when needed. Use with caution!
+
+# COMMAND ----------
+
+# MAGIC %python
+# MAGIC def cleanup_climate_risk_schema(catalog_name, confirm_cleanup=False):
+# MAGIC     """
+# MAGIC     Clean up the climate_risk schema and all its contents.
+# MAGIC     
+# MAGIC     Args:
+# MAGIC         catalog_name (str): Name of the catalog containing the schema
+# MAGIC         confirm_cleanup (bool): Must be True to actually execute cleanup
+# MAGIC     
+# MAGIC     WARNING: This will delete ALL data in the climate_risk schema!
+# MAGIC     """
+# MAGIC     
+# MAGIC     if not confirm_cleanup:
+# MAGIC         print("⚠️  WARNING: This will DELETE ALL DATA in the climate_risk schema!")
+# MAGIC         print("🗑️  Including:")
+# MAGIC         print("   - All staging tables with data")
+# MAGIC         print("   - All processed tables with data") 
+# MAGIC         print("   - All analytics tables with data")
+# MAGIC         print("   - All volumes and stored files")
+# MAGIC         print("")
+# MAGIC         print("💡 To confirm cleanup, call: cleanup_climate_risk_schema(catalog_name, confirm_cleanup=True)")
+# MAGIC         return
+# MAGIC     
+# MAGIC     print("🗑️  Starting cleanup of climate_risk schema...")
+# MAGIC     
+# MAGIC     try:
+# MAGIC         # Drop all volumes first (this will delete files)
+# MAGIC         volumes_to_drop = [
+# MAGIC             "raw_data_volume",
+# MAGIC             "processed_data_volume", 
+# MAGIC             "model_artifacts_volume",
+# MAGIC             "pipeline_checkpoints_volume"
+# MAGIC         ]
+# MAGIC         
+# MAGIC         print("📁 Dropping volumes and data files...")
+# MAGIC         for volume in volumes_to_drop:
+# MAGIC             try:
+# MAGIC                 spark.sql(f"DROP VOLUME IF EXISTS {catalog_name}.climate_risk.{volume}")
+# MAGIC                 print(f"   ✅ Dropped volume: {volume}")
+# MAGIC             except Exception as e:
+# MAGIC                 print(f"   ⚠️  Could not drop volume {volume}: {str(e)}")
+# MAGIC         
+# MAGIC         # Drop the entire schema (this will drop all tables)
+# MAGIC         print("🗄️  Dropping climate_risk schema and all tables...")
+# MAGIC         spark.sql(f"DROP SCHEMA IF EXISTS {catalog_name}.climate_risk CASCADE")
+# MAGIC         print("   ✅ Dropped climate_risk schema")
+# MAGIC         
+# MAGIC         print("🎯 Cleanup completed successfully!")
+# MAGIC         print(f"   📋 Catalog '{catalog_name}' remains intact")
+# MAGIC         print(f"   🗑️  Schema 'climate_risk' and all contents removed")
+# MAGIC         
+# MAGIC     except Exception as e:
+# MAGIC         print(f"❌ Error during cleanup: {str(e)}")
+# MAGIC         print("💡 You may need to manually clean up remaining resources")
+
+# COMMAND ----------
+
+# MAGIC %python
+# MAGIC def list_climate_risk_resources(catalog_name):
+# MAGIC     """List all resources in the climate_risk schema"""
+# MAGIC     
+# MAGIC     print(f"📋 Resources in {catalog_name}.climate_risk:")
+# MAGIC     print("=" * 50)
+# MAGIC     
+# MAGIC     try:
+# MAGIC         # Check if schema exists
+# MAGIC         schemas = spark.sql(f"SHOW SCHEMAS IN {catalog_name}").collect()
+# MAGIC         schema_exists = any(row.databaseName == 'climate_risk' for row in schemas)
+# MAGIC         
+# MAGIC         if not schema_exists:
+# MAGIC             print("   📭 Schema 'climate_risk' does not exist")
+# MAGIC             return
+# MAGIC         
+# MAGIC         # List tables
+# MAGIC         print("🗄️  Tables:")
+# MAGIC         tables = spark.sql(f"SHOW TABLES IN {catalog_name}.climate_risk").collect()
+# MAGIC         if tables:
+# MAGIC             for table in tables:
+# MAGIC                 print(f"   📊 {table.tableName}")
+# MAGIC         else:
+# MAGIC             print("   📭 No tables found")
+# MAGIC         
+# MAGIC         # List volumes  
+# MAGIC         print("\n📁 Volumes:")
+# MAGIC         try:
+# MAGIC             volumes = spark.sql(f"SHOW VOLUMES IN {catalog_name}.climate_risk").collect()
+# MAGIC             if volumes:
+# MAGIC                 for volume in volumes:
+# MAGIC                     print(f"   📦 {volume.volume_name}")
+# MAGIC             else:
+# MAGIC                 print("   📭 No volumes found")
+# MAGIC         except Exception as e:
+# MAGIC             print(f"   ⚠️  Could not list volumes: {str(e)}")
+# MAGIC             
+# MAGIC     except Exception as e:
+# MAGIC         print(f"❌ Error listing resources: {str(e)}")
+
+# COMMAND ----------
+
+# MAGIC %python
+# MAGIC # Display current resources
+# MAGIC list_climate_risk_resources(catalog_name)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Cleanup Instructions
+# MAGIC 
+# MAGIC ### To clean up the climate_risk schema when needed:
+# MAGIC 
+# MAGIC ```python
+# MAGIC # First, review what will be deleted
+# MAGIC list_climate_risk_resources(catalog_name)
+# MAGIC 
+# MAGIC # Then confirm cleanup (WARNING: This deletes all data!)
+# MAGIC cleanup_climate_risk_schema(catalog_name, confirm_cleanup=True)
+# MAGIC ```
+# MAGIC 
+# MAGIC ### What gets cleaned up:
+# MAGIC - ✅ All tables in climate_risk schema
+# MAGIC - ✅ All volumes and stored files  
+# MAGIC - ✅ All data and metadata
+# MAGIC - ❌ Catalog remains intact (only schema is dropped)
+# MAGIC 
+# MAGIC ### After cleanup, you can re-run this notebook to recreate everything fresh!

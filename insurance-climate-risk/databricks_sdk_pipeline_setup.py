@@ -12,8 +12,9 @@
 # MAGIC
 # MAGIC ## Prerequisites:
 # MAGIC - Databricks workspace with appropriate permissions
-# MAGIC - Unity Catalog enabled
+# MAGIC - Unity Catalog enabled with volumes created
 # MAGIC - Access to create pipelines and jobs
+# MAGIC - Unity Catalog schema with volumes (run unity_catalog_schema_setup.py first)
 
 # COMMAND ----------
 
@@ -44,15 +45,20 @@ import time
 # COMMAND ----------
 
 # Configuration parameters
+# Base configuration
+catalog_name = "demo_hc"
+environment = "development"  # development, staging, production
+
 config = {
-    "catalog_name": "demo_hc",
-    "environment": "development",  # development, staging, production
+    "catalog_name": catalog_name,
+    "environment": environment,
     "resource_prefix": "climate_risk",
     "workspace_url": spark.conf.get("spark.databricks.workspaceUrl"),
     "pipeline_target_schema": "climate_risk",
-    "raw_data_path": "/mnt/climate-data/raw/",
-    "checkpoint_path": "/mnt/climate-data/checkpoints/",
-    "storage_location": "/mnt/climate-data/tables/"
+    "raw_data_path": f"/Volumes/{catalog_name}/climate_risk/raw_data_volume/",
+    "checkpoint_path": f"/Volumes/{catalog_name}/climate_risk/pipeline_checkpoints_volume/",
+    "storage_location": f"/Volumes/{catalog_name}/climate_risk/processed_data_volume/",
+    "model_artifacts_path": f"/Volumes/{catalog_name}/climate_risk/model_artifacts_volume/"
 }
 
 print("Configuration:")
@@ -85,7 +91,7 @@ def create_unified_climate_risk_pipeline():
     # Pipeline configuration with multiple notebooks for different data sources
     pipeline_config = CreatePipeline(
         name=pipeline_name,
-        storage=config['storage_location'] + "climate_risk/",
+        storage=config['storage_location'],
         target=f"{config['catalog_name']}.{config['pipeline_target_schema']}",
         libraries=[
             PipelineLibrary(
