@@ -59,7 +59,7 @@ spark.sql(f"USE CATALOG {catalog_name}")
 
 # MAGIC %md
 # MAGIC ## Unity Catalog Volume Creation
-# MAGIC 
+# MAGIC
 # MAGIC Creating a single volume with organized directories instead of deprecated /mnt paths.
 
 # COMMAND ----------
@@ -73,58 +73,57 @@ spark.sql(f"USE CATALOG {catalog_name}")
 
 # MAGIC %md
 # MAGIC ## Volume Directory Structure Setup
-# MAGIC 
+# MAGIC
 # MAGIC Creating organized directories within the volume for different data types.
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC import os
-# MAGIC 
-# MAGIC # Define volume path and directory structure
-# MAGIC volume_path = f"/Volumes/{catalog_name}/climate_risk/data_volume"
-# MAGIC 
-# MAGIC # Directory structure for organized data storage
-# MAGIC directories = [
-# MAGIC     "raw_data",           # Raw climate data files from external sources
-# MAGIC     "processed_data",     # Processed and cleaned data files  
-# MAGIC     "model_artifacts",    # ML model artifacts and checkpoints
-# MAGIC     "pipeline_checkpoints", # Delta Live Tables pipeline checkpoints
-# MAGIC     "staging",           # Temporary staging area for data processing
-# MAGIC     "analytics"          # Analytics outputs and reports
-# MAGIC ]
-# MAGIC 
-# MAGIC print(f"📁 Setting up directory structure in volume: {volume_path}")
-# MAGIC print("=" * 60)
-# MAGIC 
-# MAGIC # Create directories if they don't exist
-# MAGIC for directory in directories:
-# MAGIC     dir_path = os.path.join(volume_path, directory)
-# MAGIC     try:
-# MAGIC         # Use dbutils to create directories in Unity Catalog volume
-# MAGIC         dbutils.fs.mkdirs(dir_path)
-# MAGIC         print(f"✅ Created directory: {directory}/")
-# MAGIC     except Exception as e:
-# MAGIC         # Directory might already exist, which is fine
-# MAGIC         if "already exists" in str(e).lower() or "fileexists" in str(e).lower():
-# MAGIC             print(f"✅ Directory exists: {directory}/")
-# MAGIC         else:
-# MAGIC             print(f"⚠️  Warning creating {directory}/: {str(e)}")
-# MAGIC 
-# MAGIC print("\n📂 Volume structure:")
-# MAGIC try:
-# MAGIC     # List the volume contents to verify structure
-# MAGIC     contents = dbutils.fs.ls(volume_path)
-# MAGIC     for item in contents:
-# MAGIC         print(f"   📁 {item.name}")
-# MAGIC except Exception as e:
-# MAGIC     print(f"   ⚠️  Could not list volume contents: {str(e)}")
+import os
+
+# Define volume path and directory structure
+volume_path = f"/Volumes/{catalog_name}/climate_risk/data_volume"
+
+# Directory structure for organized data storage
+directories = [
+    "raw_data",           # Raw climate data files from external sources
+    "processed_data",     # Processed and cleaned data files  
+    "model_artifacts",    # ML model artifacts and checkpoints
+    "pipeline_checkpoints", # Delta Live Tables pipeline checkpoints
+    "staging",           # Temporary staging area for data processing
+    "analytics"          # Analytics outputs and reports
+]
+
+print(f"📁 Setting up directory structure in volume: {volume_path}")
+print("=" * 60)
+
+# Create directories if they don't exist
+for directory in directories:
+    dir_path = os.path.join(volume_path, directory)
+    try:
+        # Use dbutils to create directories in Unity Catalog volume
+        dbutils.fs.mkdirs(dir_path)
+        print(f"✅ Created directory: {directory}/")
+    except Exception as e:
+        # Directory might already exist, which is fine
+        if "already exists" in str(e).lower() or "fileexists" in str(e).lower():
+            print(f"✅ Directory exists: {directory}/")
+        else:
+            print(f"⚠️  Warning creating {directory}/: {str(e)}")
+
+print("\n📂 Volume structure:")
+try:
+    # List the volume contents to verify structure
+    contents = dbutils.fs.ls(volume_path)
+    for item in contents:
+        print(f"   📁 {item.name}")
+except Exception as e:
+    print(f"   ⚠️  Could not list volume contents: {str(e)}")
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## Climate Risk Data Tables
-# MAGIC 
+# MAGIC
 # MAGIC Setting up tables in a unified schema with staging, processed, and analytics layers:
 # MAGIC - **Staging Tables**: Raw data ingestion with minimal transformation
 # MAGIC - **Processed Tables**: Cleaned and standardized data for analysis
@@ -679,136 +678,133 @@ display(spark.sql(f"SHOW VOLUMES IN {catalog_name}.climate_risk"))
 
 # MAGIC %md
 # MAGIC ## Schema Cleanup Functions
-# MAGIC 
+# MAGIC
 # MAGIC Functions to clean up the schema and volumes when needed. Use with caution!
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC def cleanup_climate_risk_schema(catalog_name, confirm_cleanup=False):
-# MAGIC     """
-# MAGIC     Clean up the climate_risk schema and all its contents.
-# MAGIC     
-# MAGIC     Args:
-# MAGIC         catalog_name (str): Name of the catalog containing the schema
-# MAGIC         confirm_cleanup (bool): Must be True to actually execute cleanup
-# MAGIC     
-# MAGIC     WARNING: This will delete ALL data in the climate_risk schema!
-# MAGIC     """
-# MAGIC     
-# MAGIC     if not confirm_cleanup:
-# MAGIC         print("⚠️  WARNING: This will DELETE ALL DATA in the climate_risk schema!")
-# MAGIC         print("🗑️  Including:")
-# MAGIC         print("   - All staging tables with data")
-# MAGIC         print("   - All processed tables with data") 
-# MAGIC         print("   - All analytics tables with data")
-# MAGIC         print("   - All volumes and stored files")
-# MAGIC         print("")
-# MAGIC         print("💡 To confirm cleanup, call: cleanup_climate_risk_schema(catalog_name, confirm_cleanup=True)")
-# MAGIC         return
-# MAGIC     
-# MAGIC     print("🗑️  Starting cleanup of climate_risk schema...")
-# MAGIC     
-# MAGIC     try:
-# MAGIC         # Drop the unified volume (this will delete all files and directories)
-# MAGIC         print("📁 Dropping unified data volume and all files...")
-# MAGIC         try:
-# MAGIC             spark.sql(f"DROP VOLUME IF EXISTS {catalog_name}.climate_risk.data_volume")
-# MAGIC             print(f"   ✅ Dropped volume: data_volume")
-# MAGIC             print(f"   📂 All directories removed: raw_data, processed_data, model_artifacts, pipeline_checkpoints, staging, analytics")
-# MAGIC         except Exception as e:
-# MAGIC             print(f"   ⚠️  Could not drop volume data_volume: {str(e)}")
-# MAGIC         
-# MAGIC         # Drop the entire schema (this will drop all tables)
-# MAGIC         print("🗄️  Dropping climate_risk schema and all tables...")
-# MAGIC         spark.sql(f"DROP SCHEMA IF EXISTS {catalog_name}.climate_risk CASCADE")
-# MAGIC         print("   ✅ Dropped climate_risk schema")
-# MAGIC         
-# MAGIC         print("🎯 Cleanup completed successfully!")
-# MAGIC         print(f"   📋 Catalog '{catalog_name}' remains intact")
-# MAGIC         print(f"   🗑️  Schema 'climate_risk' and all contents removed")
-# MAGIC         
-# MAGIC     except Exception as e:
-# MAGIC         print(f"❌ Error during cleanup: {str(e)}")
-# MAGIC         print("💡 You may need to manually clean up remaining resources")
+def cleanup_climate_risk_schema(catalog_name, confirm_cleanup=False):
+    """
+    Clean up the climate_risk schema and all its contents.
+    
+    Args:
+        catalog_name (str): Name of the catalog containing the schema
+        confirm_cleanup (bool): Must be True to actually execute cleanup
+    
+    WARNING: This will delete ALL data in the climate_risk schema!
+    """
+    
+    if not confirm_cleanup:
+        print("⚠️  WARNING: This will DELETE ALL DATA in the climate_risk schema!")
+        print("🗑️  Including:")
+        print("   - All staging tables with data")
+        print("   - All processed tables with data") 
+        print("   - All analytics tables with data")
+        print("   - All volumes and stored files")
+        print("")
+        print("💡 To confirm cleanup, call: cleanup_climate_risk_schema(catalog_name, confirm_cleanup=True)")
+        return
+    
+    print("🗑️  Starting cleanup of climate_risk schema...")
+    
+    try:
+        # Drop the unified volume (this will delete all files and directories)
+        print("📁 Dropping unified data volume and all files...")
+        try:
+            spark.sql(f"DROP VOLUME IF EXISTS {catalog_name}.climate_risk.data_volume")
+            print(f"   ✅ Dropped volume: data_volume")
+            print(f"   📂 All directories removed: raw_data, processed_data, model_artifacts, pipeline_checkpoints, staging, analytics")
+        except Exception as e:
+            print(f"   ⚠️  Could not drop volume data_volume: {str(e)}")
+        
+        # Drop the entire schema (this will drop all tables)
+        print("🗄️  Dropping climate_risk schema and all tables...")
+        spark.sql(f"DROP SCHEMA IF EXISTS {catalog_name}.climate_risk CASCADE")
+        print("   ✅ Dropped climate_risk schema")
+        
+        print("🎯 Cleanup completed successfully!")
+        print(f"   📋 Catalog '{catalog_name}' remains intact")
+        print(f"   🗑️  Schema 'climate_risk' and all contents removed")
+        
+    except Exception as e:
+        print(f"❌ Error during cleanup: {str(e)}")
+        print("💡 You may need to manually clean up remaining resources")
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC def list_climate_risk_resources(catalog_name):
-# MAGIC     """List all resources in the climate_risk schema"""
-# MAGIC     
-# MAGIC     print(f"📋 Resources in {catalog_name}.climate_risk:")
-# MAGIC     print("=" * 50)
-# MAGIC     
-# MAGIC     try:
-# MAGIC         # Check if schema exists
-# MAGIC         schemas = spark.sql(f"SHOW SCHEMAS IN {catalog_name}").collect()
-# MAGIC         schema_exists = any(row.databaseName == 'climate_risk' for row in schemas)
-# MAGIC         
-# MAGIC         if not schema_exists:
-# MAGIC             print("   📭 Schema 'climate_risk' does not exist")
-# MAGIC             return
-# MAGIC         
-# MAGIC         # List tables
-# MAGIC         print("🗄️  Tables:")
-# MAGIC         tables = spark.sql(f"SHOW TABLES IN {catalog_name}.climate_risk").collect()
-# MAGIC         if tables:
-# MAGIC             for table in tables:
-# MAGIC                 print(f"   📊 {table.tableName}")
-# MAGIC         else:
-# MAGIC             print("   📭 No tables found")
-# MAGIC         
-# MAGIC         # List volumes and directory structure
-# MAGIC         print("\n📁 Volumes:")
-# MAGIC         try:
-# MAGIC             volumes = spark.sql(f"SHOW VOLUMES IN {catalog_name}.climate_risk").collect()
-# MAGIC             if volumes:
-# MAGIC                 for volume in volumes:
-# MAGIC                     print(f"   📦 {volume.volume_name}")
-# MAGIC                     # Show directory structure within the volume
-# MAGIC                     if volume.volume_name == "data_volume":
-# MAGIC                         try:
-# MAGIC                             volume_path = f"/Volumes/{catalog_name}/climate_risk/data_volume"
-# MAGIC                             contents = dbutils.fs.ls(volume_path)
-# MAGIC                             print("      📂 Directories:")
-# MAGIC                             for item in contents:
-# MAGIC                                 print(f"         📁 {item.name}")
-# MAGIC                         except Exception as dir_e:
-# MAGIC                             print(f"      ⚠️  Could not list volume contents: {str(dir_e)}")
-# MAGIC             else:
-# MAGIC                 print("   📭 No volumes found")
-# MAGIC         except Exception as e:
-# MAGIC             print(f"   ⚠️  Could not list volumes: {str(e)}")
-# MAGIC             
-# MAGIC     except Exception as e:
-# MAGIC         print(f"❌ Error listing resources: {str(e)}")
+def list_climate_risk_resources(catalog_name):
+    """List all resources in the climate_risk schema"""
+    
+    print(f"📋 Resources in {catalog_name}.climate_risk:")
+    print("=" * 50)
+    
+    try:
+        # Check if schema exists
+        schemas = spark.sql(f"SHOW SCHEMAS IN {catalog_name}").collect()
+        schema_exists = any(row.databaseName == 'climate_risk' for row in schemas)
+        
+        if not schema_exists:
+            print("   📭 Schema 'climate_risk' does not exist")
+            return
+        
+        # List tables
+        print("🗄️  Tables:")
+        tables = spark.sql(f"SHOW TABLES IN {catalog_name}.climate_risk").collect()
+        if tables:
+            for table in tables:
+                print(f"   📊 {table.tableName}")
+        else:
+            print("   📭 No tables found")
+        
+        # List volumes and directory structure
+        print("\n📁 Volumes:")
+        try:
+            volumes = spark.sql(f"SHOW VOLUMES IN {catalog_name}.climate_risk").collect()
+            if volumes:
+                for volume in volumes:
+                    print(f"   📦 {volume.volume_name}")
+                    # Show directory structure within the volume
+                    if volume.volume_name == "data_volume":
+                        try:
+                            volume_path = f"/Volumes/{catalog_name}/climate_risk/data_volume"
+                            contents = dbutils.fs.ls(volume_path)
+                            print("      📂 Directories:")
+                            for item in contents:
+                                print(f"         📁 {item.name}")
+                        except Exception as dir_e:
+                            print(f"      ⚠️  Could not list volume contents: {str(dir_e)}")
+            else:
+                print("   📭 No volumes found")
+        except Exception as e:
+            print(f"   ⚠️  Could not list volumes: {str(e)}")
+            
+    except Exception as e:
+        print(f"❌ Error listing resources: {str(e)}")
 
 # COMMAND ----------
 
-# MAGIC %python
-# MAGIC # Display current resources
-# MAGIC list_climate_risk_resources(catalog_name)
+# Display current resources
+list_climate_risk_resources(catalog_name)
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## Cleanup Instructions
-# MAGIC 
+# MAGIC
 # MAGIC ### To clean up the climate_risk schema when needed:
-# MAGIC 
+# MAGIC
 # MAGIC ```python
 # MAGIC # First, review what will be deleted
 # MAGIC list_climate_risk_resources(catalog_name)
-# MAGIC 
+# MAGIC
 # MAGIC # Then confirm cleanup (WARNING: This deletes all data!)
 # MAGIC cleanup_climate_risk_schema(catalog_name, confirm_cleanup=True)
 # MAGIC ```
-# MAGIC 
+# MAGIC
 # MAGIC ### What gets cleaned up:
 # MAGIC - ✅ All tables in climate_risk schema
 # MAGIC - ✅ All volumes and stored files  
 # MAGIC - ✅ All data and metadata
 # MAGIC - ❌ Catalog remains intact (only schema is dropped)
-# MAGIC 
+# MAGIC
 # MAGIC ### After cleanup, you can re-run this notebook to recreate everything fresh!
