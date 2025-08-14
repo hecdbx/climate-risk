@@ -51,42 +51,100 @@ spark.sql(f"USE CATALOG {catalog_name}")
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- Create schemas for different data domains
-# MAGIC CREATE SCHEMA IF NOT EXISTS raw_data
-# MAGIC COMMENT 'Raw ingested data from external sources (AccuWeather, NOAA, etc.)';
-# MAGIC
-# MAGIC CREATE SCHEMA IF NOT EXISTS processed_data
-# MAGIC COMMENT 'Cleaned and transformed climate data';
-# MAGIC
-# MAGIC CREATE SCHEMA IF NOT EXISTS risk_models
-# MAGIC COMMENT 'Risk assessment models and computed risk scores';
-# MAGIC
-# MAGIC CREATE SCHEMA IF NOT EXISTS analytics
-# MAGIC COMMENT 'Analytical views and aggregated data for reporting';
+# MAGIC -- Create unified climate risk schema for all data and models
+# MAGIC CREATE SCHEMA IF NOT EXISTS climate_risk
+# MAGIC COMMENT 'Unified schema for all climate risk data: raw, processed, models, and analytics';
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Raw Data Tables
-# MAGIC
-# MAGIC Setting up tables for ingesting raw climate data from external sources.
+# MAGIC ## Climate Risk Data Tables
+# MAGIC 
+# MAGIC Setting up tables in a unified schema with staging, processed, and analytics layers:
+# MAGIC - **Staging Tables**: Raw data ingestion with minimal transformation
+# MAGIC - **Processed Tables**: Cleaned and standardized data for analysis
+# MAGIC - **Analytics Tables**: Risk models and business intelligence views
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- Set up raw data tables for AccuWeather ingestion
-# MAGIC USE SCHEMA raw_data;
+# MAGIC -- Set up climate risk schema for all data
+# MAGIC USE SCHEMA climate_risk;
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC ALTER SCHEMA raw_data ENABLE PREDICTIVE OPTIMIZATION;
+# MAGIC ALTER SCHEMA climate_risk ENABLE PREDICTIVE OPTIMIZATION;
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- Historical climate data from other sources
-# MAGIC CREATE OR REPLACE TABLE historical_climate_data (
+# MAGIC -- Staging: Raw AccuWeather current conditions
+# MAGIC CREATE OR REPLACE TABLE staging_accuweather_current_conditions (
+# MAGIC   location_key STRING NOT NULL,
+# MAGIC   location_name STRING,
+# MAGIC   latitude DOUBLE,
+# MAGIC   longitude DOUBLE,
+# MAGIC   observation_time TIMESTAMP,
+# MAGIC   temperature_celsius DOUBLE,
+# MAGIC   temperature_fahrenheit DOUBLE,
+# MAGIC   humidity_percent INT,
+# MAGIC   pressure_mb DOUBLE,
+# MAGIC   wind_speed_kmh DOUBLE,
+# MAGIC   wind_direction_degrees INT,
+# MAGIC   precipitation_mm DOUBLE,
+# MAGIC   weather_text STRING,
+# MAGIC   weather_icon INT,
+# MAGIC   uv_index INT,
+# MAGIC   visibility_km DOUBLE,
+# MAGIC   cloud_cover_percent INT,
+# MAGIC   ingestion_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+# MAGIC   h3_cell_7 STRING,
+# MAGIC   h3_cell_8 STRING
+# MAGIC ) 
+# MAGIC USING DELTA
+# MAGIC CLUSTER BY (DATE(observation_time), location_key)
+# MAGIC TBLPROPERTIES (
+# MAGIC   'delta.enableChangeDataFeed' = 'true',
+# MAGIC   'delta.enablePredictiveOptimization' = 'true'
+# MAGIC )
+# MAGIC COMMENT 'Staging: Real-time current weather conditions from AccuWeather API';
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC -- Staging: Raw AccuWeather daily forecasts
+# MAGIC CREATE OR REPLACE TABLE staging_accuweather_daily_forecasts (
+# MAGIC   location_key STRING NOT NULL,
+# MAGIC   location_name STRING,
+# MAGIC   latitude DOUBLE,
+# MAGIC   longitude DOUBLE,
+# MAGIC   forecast_date DATE,
+# MAGIC   min_temperature_celsius DOUBLE,
+# MAGIC   max_temperature_celsius DOUBLE,
+# MAGIC   precipitation_probability_percent INT,
+# MAGIC   precipitation_amount_mm DOUBLE,
+# MAGIC   weather_text STRING,
+# MAGIC   weather_icon INT,
+# MAGIC   wind_speed_kmh DOUBLE,
+# MAGIC   wind_direction_degrees INT,
+# MAGIC   ingestion_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+# MAGIC   h3_cell_7 STRING,
+# MAGIC   h3_cell_8 STRING
+# MAGIC )
+# MAGIC USING DELTA
+# MAGIC CLUSTER BY (forecast_date, location_key)
+# MAGIC TBLPROPERTIES (
+# MAGIC   'delta.enableChangeDataFeed' = 'true',
+# MAGIC   'delta.enablePredictiveOptimization' = 'true'
+# MAGIC )
+# MAGIC COMMENT 'Staging: Daily weather forecasts from AccuWeather API';
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC -- Staging: Historical climate data from other sources
+# MAGIC CREATE OR REPLACE TABLE staging_historical_climate_data (
 # MAGIC   source STRING NOT NULL,
 # MAGIC   location_id STRING,
 # MAGIC   latitude DOUBLE,
@@ -109,7 +167,7 @@ spark.sql(f"USE CATALOG {catalog_name}")
 # MAGIC   'delta.enableChangeDataFeed' = 'true',
 # MAGIC   'delta.feature.allowColumnDefaults' = 'enabled'
 # MAGIC )
-# MAGIC COMMENT 'Historical climate data from various sources (NOAA, ERA5, etc.)';
+# MAGIC COMMENT 'Staging: Historical climate data from various sources (NOAA, ERA5, etc.)';
 
 # COMMAND ----------
 

@@ -5,9 +5,9 @@
 # MAGIC This notebook demonstrates how to programmatically create and manage data pipelines using the Databricks Python SDK.
 # MAGIC
 # MAGIC ## What This Notebook Creates:
-# MAGIC 1. **Delta Live Tables (DLT) Pipelines** - For real-time data ingestion and processing
+# MAGIC 1. **Unified Delta Live Tables Pipeline** - Single pipeline for all data ingestion, staging, and processing
 # MAGIC 2. **Jobs for Training Workflows** - ML model training and deployment
-# MAGIC 3. **Lakeflow Integration** - Complete data flow orchestration
+# MAGIC 3. **Streamlined Lakeflow** - Simplified data flow with unified schema
 # MAGIC 4. **Monitoring and Alerting** - Pipeline health and performance tracking
 # MAGIC
 # MAGIC ## Prerequisites:
@@ -49,7 +49,7 @@ config = {
     "environment": "development",  # development, staging, production
     "resource_prefix": "climate_risk",
     "workspace_url": spark.conf.get("spark.databricks.workspaceUrl"),
-    "pipeline_target_schema": "processed_data",
+    "pipeline_target_schema": "climate_risk",
     "raw_data_path": "/mnt/climate-data/raw/",
     "checkpoint_path": "/mnt/climate-data/checkpoints/",
     "storage_location": "/mnt/climate-data/tables/"
@@ -76,46 +76,78 @@ print(f"Workspace: {config['workspace_url']}")
 
 # COMMAND ----------
 
-# Create AccuWeather Data Ingestion Pipeline
-def create_accuweather_ingestion_pipeline():
-    """Create DLT pipeline for AccuWeather data ingestion"""
+# Create Unified Climate Risk Data Pipeline
+def create_unified_climate_risk_pipeline():
+    """Create single DLT pipeline for all climate data ingestion, staging, and processing"""
     
-    pipeline_name = f"{config['resource_prefix']}_accuweather_ingestion_{config['environment']}"
+    pipeline_name = f"{config['resource_prefix']}_unified_pipeline_{config['environment']}"
     
-    # Pipeline configuration
+    # Pipeline configuration with multiple notebooks for different data sources
     pipeline_config = CreatePipeline(
         name=pipeline_name,
-        storage=config['storage_location'] + "accuweather/",
+        storage=config['storage_location'] + "climate_risk/",
         target=f"{config['catalog_name']}.{config['pipeline_target_schema']}",
         libraries=[
             PipelineLibrary(
                 notebook=NotebookLibrary(
                     path="/Repos/climate-risk/lakeflow/01_accuweather_ingestion_pipeline"
                 )
+            ),
+            PipelineLibrary(
+                notebook=NotebookLibrary(
+                    path="/Repos/climate-risk/lakeflow/02_historical_data_processing_pipeline"
+                )
+            ),
+            PipelineLibrary(
+                notebook=NotebookLibrary(
+                    path="/Repos/climate-risk/lakeflow/climate_risk_workflow"
+                )
             )
         ],
         clusters=[
             PipelineCluster(
-                label="default",
-                autoscale=AutoScale(min_workers=1, max_workers=5),
+                label="ingestion_cluster",
+                autoscale=AutoScale(min_workers=2, max_workers=8),
                 node_type_id="i3.xlarge",
                 driver_node_type_id="i3.xlarge",
                 spark_conf={
                     "spark.databricks.delta.preview.enabled": "true",
-                    "spark.databricks.delta.retentionDurationCheck.enabled": "false"
+                    "spark.databricks.delta.retentionDurationCheck.enabled": "false",
+                    "spark.databricks.delta.autoCompact.enabled": "true",
+                    "spark.databricks.delta.optimizeWrite.enabled": "true"
                 },
                 custom_tags={
                     "project": "climate-risk",
                     "environment": config['environment'],
-                    "pipeline_type": "ingestion"
+                    "pipeline_type": "unified_ingestion"
+                }
+            ),
+            PipelineCluster(
+                label="processing_cluster",
+                autoscale=AutoScale(min_workers=3, max_workers=12),
+                node_type_id="i3.2xlarge",
+                driver_node_type_id="i3.2xlarge",
+                spark_conf={
+                    "spark.databricks.delta.preview.enabled": "true",
+                    "spark.sql.adaptive.enabled": "true",
+                    "spark.sql.adaptive.coalescePartitions.enabled": "true"
+                },
+                custom_tags={
+                    "project": "climate-risk",
+                    "environment": config['environment'],
+                    "pipeline_type": "unified_processing"
                 }
             )
         ],
         configuration={
             "catalog_name": config['catalog_name'],
-            "raw_data_path": config['raw_data_path'] + "accuweather/",
-            "checkpoint_path": config['checkpoint_path'] + "accuweather/",
-            "pipeline.trigger.interval": "5 minutes"
+            "schema_name": config['pipeline_target_schema'],
+            "raw_data_path": config['raw_data_path'],
+            "checkpoint_path": config['checkpoint_path'],
+            "staging_table_prefix": "staging_",
+            "processed_table_prefix": "",
+            "pipeline.trigger.interval": "10 minutes",
+            "data_quality.quarantine_table": "data_quality_quarantine"
         },
         continuous=False,
         development=True if config['environment'] == 'development' else False,
@@ -125,16 +157,21 @@ def create_accuweather_ingestion_pipeline():
     
     try:
         pipeline = w.pipelines.create(pipeline_config)
-        print(f"✅ Created AccuWeather ingestion pipeline: {pipeline.pipeline_id}")
+        print(f"✅ Created unified climate risk pipeline: {pipeline.pipeline_id}")
         return pipeline.pipeline_id
     except Exception as e:
-        print(f"❌ Failed to create AccuWeather pipeline: {str(e)}")
+        print(f"❌ Failed to create unified pipeline: {str(e)}")
         return None
 
 # COMMAND ----------
 
-# Create Historical Data Processing Pipeline
-def create_historical_processing_pipeline():
+# MAGIC %md
+# MAGIC ## 3. ML Training Job Creation
+
+# COMMAND ----------
+
+# Create Historical Data Processing Pipeline (DEPRECATED - Now part of unified pipeline)
+def create_historical_processing_pipeline_deprecated():
     """Create DLT pipeline for historical climate data processing"""
     
     pipeline_name = f"{config['resource_prefix']}_historical_processing_{config['environment']}"
@@ -293,7 +330,7 @@ def create_drought_model_training_job():
                         "catalog_name": config['catalog_name'],
                         "environment": config['environment'],
                         "model_name": "drought_risk_model",
-                        "training_data_path": f"{config['catalog_name']}.processed_data.climate_aggregations"
+                        "training_data_path": f"{config['catalog_name']}.{config['pipeline_target_schema']}.climate_aggregations"
                     }
                 ),
                 timeout_seconds=7200,  # 2 hours
@@ -375,7 +412,7 @@ def create_flood_model_training_job():
                         "catalog_name": config['catalog_name'],
                         "environment": config['environment'],
                         "model_name": "flood_risk_model",
-                        "training_data_path": f"{config['catalog_name']}.processed_data.climate_aggregations"
+                        "training_data_path": f"{config['catalog_name']}.{config['pipeline_target_schema']}.climate_aggregations"
                     }
                 ),
                 timeout_seconds=7200,  # 2 hours
@@ -495,43 +532,15 @@ def create_master_orchestration_job(pipeline_ids, training_job_ids):
     # Create tasks for pipeline execution
     tasks = []
     
-    # Add pipeline tasks
-    if pipeline_ids.get('accuweather'):
+    # Add unified pipeline task
+    if pipeline_ids.get('unified'):
         tasks.append(
             jobs.Task(
-                task_key="run_accuweather_ingestion",
+                task_key="run_unified_climate_pipeline",
                 pipeline_task=jobs.PipelineTask(
-                    pipeline_id=pipeline_ids['accuweather']
+                    pipeline_id=pipeline_ids['unified']
                 ),
-                timeout_seconds=3600,
-                max_retries=2
-            )
-        )
-    
-    if pipeline_ids.get('historical'):
-        tasks.append(
-            jobs.Task(
-                task_key="run_historical_processing",
-                pipeline_task=jobs.PipelineTask(
-                    pipeline_id=pipeline_ids['historical']
-                ),
-                depends_on=[jobs.TaskDependency(task_key="run_accuweather_ingestion")] if pipeline_ids.get('accuweather') else [],
-                timeout_seconds=7200,
-                max_retries=2
-            )
-        )
-    
-    if pipeline_ids.get('risk_workflow'):
-        tasks.append(
-            jobs.Task(
-                task_key="run_risk_workflow",
-                pipeline_task=jobs.PipelineTask(
-                    pipeline_id=pipeline_ids['risk_workflow']
-                ),
-                depends_on=[
-                    jobs.TaskDependency(task_key="run_historical_processing")
-                ] if pipeline_ids.get('historical') else [],
-                timeout_seconds=5400,
+                timeout_seconds=10800,  # 3 hours for complete pipeline
                 max_retries=2
             )
         )
@@ -545,8 +554,8 @@ def create_master_orchestration_job(pipeline_ids, training_job_ids):
                     job_id=training_job_ids['drought']
                 ),
                 depends_on=[
-                    jobs.TaskDependency(task_key="run_risk_workflow")
-                ] if pipeline_ids.get('risk_workflow') else [],
+                    jobs.TaskDependency(task_key="run_unified_climate_pipeline")
+                ] if pipeline_ids.get('unified') else [],
                 timeout_seconds=10800,  # 3 hours
                 max_retries=1
             )
@@ -612,11 +621,9 @@ def create_all_pipelines_and_jobs():
     pipeline_ids = {}
     job_ids = {}
     
-    # Create DLT Pipelines
-    print("\n📊 Creating Delta Live Tables Pipelines...")
-    pipeline_ids['accuweather'] = create_accuweather_ingestion_pipeline()
-    pipeline_ids['historical'] = create_historical_processing_pipeline()
-    pipeline_ids['risk_workflow'] = create_climate_risk_workflow()
+    # Create Unified DLT Pipeline
+    print("\n📊 Creating Unified Delta Live Tables Pipeline...")
+    pipeline_ids['unified'] = create_unified_climate_risk_pipeline()
     
     # Create Training Jobs
     print("\n🤖 Creating ML Training Jobs...")
@@ -633,7 +640,7 @@ def create_all_pipelines_and_jobs():
     print("📋 CREATION SUMMARY")
     print("=" * 60)
     
-    print("\n🔄 Delta Live Tables Pipelines:")
+    print("\n🔄 Unified Delta Live Tables Pipeline:")
     for name, pid in pipeline_ids.items():
         status = "✅ Created" if pid else "❌ Failed"
         print(f"  {name}: {status} ({pid})")
