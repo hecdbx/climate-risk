@@ -169,9 +169,10 @@ except Exception as e:
 # MAGIC   h3_cell_8 STRING
 # MAGIC ) 
 # MAGIC USING DELTA
-# MAGIC CLUSTER BY (DATE(observation_time), location_key)
+# MAGIC CLUSTER BY (observation_time, location_key)
 # MAGIC TBLPROPERTIES (
-# MAGIC   'delta.enableChangeDataFeed' = 'true'
+# MAGIC   'delta.enableChangeDataFeed' = 'true',
+# MAGIC   'delta.feature.allowColumnDefaults' = 'supported'
 # MAGIC )
 # MAGIC COMMENT 'Staging: Real-time current weather conditions from AccuWeather API';
 
@@ -200,7 +201,8 @@ except Exception as e:
 # MAGIC USING DELTA
 # MAGIC CLUSTER BY (forecast_date, location_key)
 # MAGIC TBLPROPERTIES (
-# MAGIC   'delta.enableChangeDataFeed' = 'true'
+# MAGIC   'delta.enableChangeDataFeed' = 'true',
+# MAGIC   'delta.feature.allowColumnDefaults' = 'supported'
 # MAGIC )
 # MAGIC COMMENT 'Staging: Daily weather forecasts from AccuWeather API';
 
@@ -270,11 +272,6 @@ except Exception as e:
 # COMMAND ----------
 
 # MAGIC %sql
-
-
-# COMMAND ----------
-
-# MAGIC %sql
 # MAGIC -- Unified climate observations (cleaned and standardized)
 # MAGIC CREATE OR REPLACE TABLE climate_observations (
 # MAGIC   h3_cell_7 STRING NOT NULL,
@@ -336,11 +333,6 @@ except Exception as e:
 # MAGIC ## Risk Assessment Tables
 # MAGIC
 # MAGIC Creating tables for storing risk assessment results and models.
-
-# COMMAND ----------
-
-# MAGIC %sql
-
 
 # COMMAND ----------
 
@@ -452,11 +444,6 @@ except Exception as e:
 # COMMAND ----------
 
 # MAGIC %sql
-
-
-# COMMAND ----------
-
-# MAGIC %sql
 # MAGIC -- Portfolio risk summary view
 # MAGIC CREATE OR REPLACE VIEW portfolio_risk_summary 
 # MAGIC COMMENT 'Portfolio-level risk summary for executive reporting' 
@@ -471,7 +458,7 @@ except Exception as e:
 # MAGIC   SUM(CASE WHEN overall_risk_level IN ('high', 'very_high') THEN 1 ELSE 0 END) as high_risk_locations,
 # MAGIC   SUM(CASE WHEN primary_risk_factor = 'drought' THEN 1 ELSE 0 END) as drought_primary_locations,
 # MAGIC   SUM(CASE WHEN primary_risk_factor = 'flood' THEN 1 ELSE 0 END) as flood_primary_locations
-# MAGIC FROM risk_models.combined_risk_assessments
+# MAGIC FROM demo_hc.climate_risk.combined_risk_assessments
 # MAGIC GROUP BY assessment_date;
 
 # COMMAND ----------
@@ -490,7 +477,7 @@ except Exception as e:
 # MAGIC   MAX(combined_risk_score) as max_risk_score,
 # MAGIC   COUNT(CASE WHEN overall_risk_level IN ('high', 'very_high') THEN 1 END) as high_risk_days,
 # MAGIC   AVG(combined_premium_multiplier) as avg_premium_multiplier
-# MAGIC FROM risk_models.combined_risk_assessments
+# MAGIC FROM demo_hc.climate_risk.combined_risk_assessments
 # MAGIC WHERE assessment_date >= CURRENT_DATE() - INTERVAL 90 DAYS
 # MAGIC GROUP BY h3_cell_7, latitude, longitude;
 
@@ -505,46 +492,46 @@ except Exception as e:
 
 # COMMAND ----------
 
-# Grant permissions (adjust as needed for your organization)
-grant_statements = [
-    f"GRANT USAGE ON CATALOG {catalog_name} TO `domain-users`",
-    f"GRANT USAGE ON SCHEMA {catalog_name}.raw_data TO `domain-users`",
-    f"GRANT USAGE ON SCHEMA {catalog_name}.processed_data TO `domain-users`",
-    f"GRANT USAGE ON SCHEMA {catalog_name}.risk_models TO `domain-users`",
-    f"GRANT USAGE ON SCHEMA {catalog_name}.analytics TO `domain-users`"
-]
-
-for stmt in grant_statements:
-    try:
-        spark.sql(stmt)
-        print(f"✅ {stmt}")
-    except Exception as e:
-        print(f"⚠️ {stmt} - {str(e)}")
-
-# COMMAND ----------
-
-# Grant read access to analytics teams
-try:
-    spark.sql(f"GRANT SELECT ON SCHEMA {catalog_name}.analytics TO `analytics-team`")
-    print(f"✅ Granted SELECT on {catalog_name}.analytics to analytics-team")
-except Exception as e:
-    print(f"⚠️ Grant SELECT failed: {str(e)}")
+# # Grant permissions (adjust as needed for your organization)
+# grant_statements = [
+#     f"GRANT USAGE ON CATALOG {catalog_name} TO `domain-users`",
+#     f"GRANT USAGE ON SCHEMA {catalog_name}.raw_data TO `domain-users`",
+#     f"GRANT USAGE ON SCHEMA {catalog_name}.processed_data TO `domain-users`",
+#     f"GRANT USAGE ON SCHEMA {catalog_name}.risk_models TO `domain-users`",
+#     f"GRANT USAGE ON SCHEMA {catalog_name}.analytics TO `domain-users`"
+# ]
+#
+# for stmt in grant_statements:
+#     try:
+#         spark.sql(stmt)
+#         print(f"✅ {stmt}")
+#     except Exception as e:
+#         print(f"⚠️ {stmt} - {str(e)}")
 
 # COMMAND ----------
 
-# Grant write access to data engineering teams
-engineering_grants = [
-    f"GRANT ALL PRIVILEGES ON SCHEMA {catalog_name}.raw_data TO `data-engineering-team`",
-    f"GRANT ALL PRIVILEGES ON SCHEMA {catalog_name}.processed_data TO `data-engineering-team`",
-    f"GRANT ALL PRIVILEGES ON SCHEMA {catalog_name}.risk_models TO `data-engineering-team`"
-]
+# # Grant read access to analytics teams
+# try:
+#     spark.sql(f"GRANT SELECT ON SCHEMA {catalog_name}.analytics TO `analytics-team`")
+#     print(f"✅ Granted SELECT on {catalog_name}.analytics to analytics-team")
+# except Exception as e:
+#     print(f"⚠️ Grant SELECT failed: {str(e)}")
 
-for stmt in engineering_grants:
-    try:
-        spark.sql(stmt)
-        print(f"✅ {stmt}")
-    except Exception as e:
-        print(f"⚠️ {stmt} - {str(e)}")
+# COMMAND ----------
+
+# # Grant write access to data engineering teams
+# engineering_grants = [
+#     f"GRANT ALL PRIVILEGES ON SCHEMA {catalog_name}.raw_data TO `data-engineering-team`",
+#     f"GRANT ALL PRIVILEGES ON SCHEMA {catalog_name}.processed_data TO `data-engineering-team`",
+#     f"GRANT ALL PRIVILEGES ON SCHEMA {catalog_name}.risk_models TO `data-engineering-team`"
+# ]
+#
+# for stmt in engineering_grants:
+#     try:
+#         spark.sql(stmt)
+#         print(f"✅ {stmt}")
+#     except Exception as e:
+#         print(f"⚠️ {stmt} - {str(e)}")
 
 # COMMAND ----------
 
@@ -601,40 +588,6 @@ for stmt in engineering_grants:
 # MAGIC - `climate_observations`
 # MAGIC - `climate_aggregations`
 # MAGIC - Risk assessment tables
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Enable Predictive Optimization
-# MAGIC
-# MAGIC Enabling predictive optimization for all tables using ALTER TABLE commands instead of table properties.
-
-# COMMAND ----------
-
-# Enable predictive optimization for all staging tables
-spark.sql(f"ALTER TABLE {catalog_name}.climate_risk.staging_accuweather_current_conditions ENABLE PREDICTIVE OPTIMIZATION")
-spark.sql(f"ALTER TABLE {catalog_name}.climate_risk.staging_accuweather_daily_forecasts ENABLE PREDICTIVE OPTIMIZATION")
-spark.sql(f"ALTER TABLE {catalog_name}.climate_risk.staging_historical_climate_data ENABLE PREDICTIVE OPTIMIZATION")
-
-print("✅ Enabled predictive optimization for staging tables")
-
-# COMMAND ----------
-
-# Enable predictive optimization for processed tables
-spark.sql(f"ALTER TABLE {catalog_name}.climate_risk.climate_observations ENABLE PREDICTIVE OPTIMIZATION")
-spark.sql(f"ALTER TABLE {catalog_name}.climate_risk.climate_aggregations ENABLE PREDICTIVE OPTIMIZATION")
-spark.sql(f"ALTER TABLE {catalog_name}.climate_risk.elevation_data ENABLE PREDICTIVE OPTIMIZATION")
-
-print("✅ Enabled predictive optimization for processed tables")
-
-# COMMAND ----------
-
-# Enable predictive optimization for risk assessment tables
-spark.sql(f"ALTER TABLE {catalog_name}.climate_risk.drought_risk_assessments ENABLE PREDICTIVE OPTIMIZATION")
-spark.sql(f"ALTER TABLE {catalog_name}.climate_risk.flood_risk_assessments ENABLE PREDICTIVE OPTIMIZATION")
-spark.sql(f"ALTER TABLE {catalog_name}.climate_risk.combined_risk_assessments ENABLE PREDICTIVE OPTIMIZATION")
-
-print("✅ Enabled predictive optimization for risk assessment tables")
 
 # COMMAND ----------
 
